@@ -27,7 +27,7 @@ dependencies = [
     "torchaudio",
     "scikit-learn",
     "sounddevice",
-    "soundfile",
+    "soundfile"
 ]
 
 [project.optional-dependencies]
