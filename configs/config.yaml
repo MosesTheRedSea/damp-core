@@ -5,4 +5,4 @@ global:
 train:
   loss: 1e-4
   epochs: 150
-  
+

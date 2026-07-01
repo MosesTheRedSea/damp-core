@@ -11,7 +11,7 @@ from scipy.signal import fftconvolve
 from datetime import datetime
 
 def record_speaker_data(dataset_directory, room_directory, excitation_path, occlusion_type, occlusion_distance, occluded_type, occluded_distance, base_filename, channels=16, repeat=8, sleep_duration=3):
-
+    
     distance_dir = f"{occlusion_distance}-{occluded_distance}".strip()
 
     target_directory = (
@@ -72,7 +72,6 @@ def record_speaker_data(dataset_directory, room_directory, excitation_path, occl
 
 
 def plot_ir(start_sample, end_sample, rir_cropped, i):
-    
     plt.figure(figsize=(10, 4))
     plt.plot(np.arange(start_sample, end_sample), rir_cropped)
     plt.title(f"IR Segment (Mic 1) - Samples {start_sample} to {end_sample} - Recording {i + 1}")
@@ -131,3 +130,20 @@ python record.py \
     --repeat 8 \
     --sleep-duration 3
 """
+
+
+"""
+python record.py \
+    --dataset-directory "/home/moses/Moses/Research/Current/Institute of Science Tokyo/IST-AUDN20/audio" \
+    --room-directory room_A \
+    --excitation-path "/home/moses/Moses/Research/Current/Institute of Science Tokyo/acoustic-robotics/Multi-Task Acoustic Perception for Occluded Object Detection, Distance Estimation, and Material Classification/excitation.wav" \
+    --occlusion-type wood \
+    --occlusion-distance 0.1 \
+    --occluded-type ladder \
+    --occluded-distance 0.5 \
+    --base-filename ladder \
+    --channels 16 \
+    --repeat 8 \
+    --sleep-duration 3
+"""
+

@@ -38,6 +38,7 @@ class CrossBranchAttention(nn.Module):
             nn.Dropout(dropout),
             nn.Linear(dim * 2, dim),
         )
+
         self.temporal_norm2 = nn.LayerNorm(dim)
         self.spectral_norm2 = nn.LayerNorm(dim)
 
@@ -46,26 +47,8 @@ class CrossBranchAttention(nn.Module):
 
         # temporal_feat: (B, 128, L)   -> (B, L, 128)
         # spec_feat:     (B, 128, H, W) -> (B, HW, 128)
- 
-        t = temporal_feat.transpose(1, 2)                          # (B, L, 128)
- 
-        B, C, H, W = spec_feat.shape
-        s = spec_feat.view(B, C, H * W).transpose(1, 2)           # (B, HW, 128)
- 
-        # Temporal attends to Spectral (Q=t, K=s, V=s) 
-        t_attn, _ = self.t_to_s(query=t, key=s, value=s)
-        t = self.temporal_norm(t + t_attn)                         # residual + norm
-        t = self.temporal_norm2(t + self.temporal_ffn(t))          # FFN + norm
- 
-        # Spectral attends to Temporal (Q=s, K=t, V=t) 
-        s_attn, _ = self.s_to_t(query=s, key=t, value=t)
-        s = self.spectral_norm(s + s_attn)                         # residual + norm
-        s = self.spectral_norm2(s + self.spectral_ffn(s))          # FFN + norm
- 
-        return t, s   # (B, L, 128), (B, HW, 128)
 
-
-        # # Temporal: (B,128,L) -> (B,L,128)
+         # # Temporal: (B,128,L) -> (B,L,128)
         # temporal_feat = temporal_feat.transpose(1, 2)
                       
         # # Spectral: (B,128,H,W) -> (B,HW,128)
@@ -79,28 +62,24 @@ class CrossBranchAttention(nn.Module):
 
         # # https://nlp.seas.harvard.edu/annotated-transformer/
         # # Attention(Q, K, V) = softmax(QK^T / sqrt(d_k)) * V
-        # scores_t_s = torch.matmul(t_q, s_k.transpose(-1, -2)) / (t_q.size(-1) ** 0.5)
-        # attn_t_s = self.softmax(scores_t_s)
+ 
+        t = temporal_feat.transpose(1, 2)                         
+ 
+        B, C, H, W = spec_feat.shape
+        s = spec_feat.view(B, C, H * W).transpose(1, 2)          
+ 
+        # Temporal attends to Spectral (Q=t, K=s, V=s) 
+        t_attn, _ = self.t_to_s(query=t, key=s, value=s)
+        t = self.temporal_norm(t + t_attn)                         
+        t = self.temporal_norm2(t + self.temporal_ffn(t))          
+ 
+        # Spectral attends to Temporal (Q=s, K=t, V=t) 
+        s_attn, _ = self.s_to_t(query=s, key=t, value=t)
+        s = self.spectral_norm(s + s_attn)                        
+        s = self.spectral_norm2(s + self.spectral_ffn(s))         
+ 
+        return t, s   # (B, L, 128), (B, HW, 128)
 
-        # new_temp = torch.matmul(attn_t_s, s_v) # final attention
 
-        # # Residual + Norm
-        # new_temp = self.temporal_norm(new_temp + temporal_feat)
-
-        # # CNN Convention
-        # # PyTorch CNN (B, C, L)
-        # # attention treats the last dimension as the feature vector.
-        # # Attention (B, N, D) - Batch, Number of Tokens, Embeeding Dimension=++++++++++++
-
-        # # Spectral attends to Temporal
-        # s_q = self.spectogram_query(spec_feat)
-        # t_k = self.temporal_key(temporal_feat)
-        # t_v = self.temporal_value(temporal_feat)
-
-        # scores_s_t = torch.matmul(s_q, t_k.transpose(-1, -2)) / (s_q.size(-1) ** 0.5)
-        # attn_s_t = self.softmax(scores_s_t)
-        # new_spec = torch.matmul(attn_s_t, t_v)
-
-        # # Residual + Norm
-        # new_spec = self.spectogram_norm(new_spec + spec_feat)
-        # return new_temp, new_spec
+    
+     
