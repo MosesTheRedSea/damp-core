@@ -6,6 +6,8 @@ from pathlib import Path
 import numpy as np
 import soundfile as sf
 from scipy.signal import fftconvolve, spectrogram as compute_spec
+from configs.config import PROJECT
+
 
 AUDIO_DATA_ROOT = ""
 EXCITATION_PATH = ""
@@ -161,16 +163,11 @@ def print_summary(records):
  
 if __name__ == "__main__":
 
-    config_path = Path(__file__).parent.parent / "configs/config.yaml"
-    with open(config_path) as f:
-        cfg = yaml.safe_load(f)
-    
-    BASE = Path(cfg["global"]["BASE"])
-    PROJECT = BASE / cfg["global"]["PROJECT"]
-    # AUDIO_DATA_ROOT = BASE / "IST-AUDN20/audio"
-    AUDIO_DATA_ROOT = "/home/moses/Moses/Research/Current/Institute of Science Tokyo/IST-AUDN20/audio"
-    EXCITATION_PATH = PROJECT / "excitation.wav"
-    SAVE_ROOT = Path(__file__).parent / "processed"
+    project = PROJECT
+
+    AUDIO_DATA_ROOT = "/home/3/um07293/data/audio"
+    EXCITATION_PATH = f'{project}/excitation.wav'
+    SAVE_ROOT = f'{Path(__file__).parent}/processed'
 
     os.makedirs(SAVE_ROOT, exist_ok=True)
 

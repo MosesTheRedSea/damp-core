@@ -14,7 +14,7 @@ authors = [
 ]
 
 dependencies = [
-    "numpy",
+    "numpy<2",
     "scipy",
     "matplotlib",
     "h5py",
@@ -24,8 +24,9 @@ dependencies = [
     "pandas",
     "torch",
     "torchvision",
-    "torchaudio",
+    "torchmetrics",
     "scikit-learn",
+    "seaborn",
     "sounddevice",
     "soundfile"
 ]
@@ -39,10 +40,7 @@ dev = [
 ]
 
 [tool.setuptools]
-package-dir = { "" = "/home/moses/Moses/Research/Artificial_Intelligence/Deep-Learning" }
+package-dir = { "" = "." }
 
 [tool.setuptools.packages.find]
 where = ["src"]
-
-
-

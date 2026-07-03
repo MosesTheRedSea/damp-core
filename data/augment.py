@@ -6,7 +6,8 @@ import pandas as pd
 from pathlib import Path
 import soundfile as sf
 from scipy.signal import fftconvolve, spectrogram as compute_spectogram
-
+from configs.config import PROJECT
+ 
 PROCESSED_DATA_ROOT = ""
 EXCITATION_PATH = ""
 AUGMENTED_ROOT = ""
@@ -63,16 +64,12 @@ def save_augmented(source_folder, output_folder, aug_fn, aug_name):
 
 if __name__ == "__main__":
 
-    config_path = Path(__file__).parent.parent / "configs/config.yaml"
-    with open(config_path) as f:
-        cfg = yaml.safe_load(f)
-    
-    BASE = Path(cfg["global"]["BASE"])
-    PROJECT = BASE / cfg["global"]["PROJECT"]
+    project = PROJECT
 
-    PROCESSED_DATA_ROOT = Path(__file__).parent / "processed"
-    EXCITATION_PATH = PROJECT / "excitation.wav"
-    AUGMENTED_ROOT = Path(__file__).parent / "augmented"
+    PROCESSED_DATA_ROOT = Path(f'{Path(__file__).parent}/processed')
+    EXCITATION_PATH = Path(f'{project}/excitation.wav')
+    AUGMENTED_ROOT = Path(f'{Path(__file__).parent}/augmented')
+
     os.makedirs(AUGMENTED_ROOT, exist_ok=True)
 
     augmentations = {

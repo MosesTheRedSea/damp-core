@@ -1,13 +1,18 @@
 import re
 import torch
+from torch import nn
+import json
 import seaborn as sns
 from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 import soundfile as sf
+from configs.config import OBJECT_TO_MATERIAL
+
+from torch.utils.data import Dataset
 from scipy.signal import fftconvolve, spectrogram as compute_spec, correlate
 from sklearn.metrics import confusion_matrix, mean_squared_error, mean_absolute_error
-
+    
 def load_excitation(excitation_path):
     excitation, fs = sf.read(excitation_path)
     if excitation.ndim > 1:
@@ -48,44 +53,63 @@ def run_evaluation(model, loader, device, det_classes, mat_classes, save_dir):
         for ir, spec, t_det, t_dist, t_mat in loader:
             ir, spec = ir.to(device), spec.to(device)
             p_det, p_dist, p_mat = model(ir, spec)
-
             all_det_p.extend(torch.argmax(p_det, dim=1).cpu().numpy())
             all_det_t.extend(t_det.numpy())
             all_mat_p.extend(torch.argmax(p_mat, dim=1).cpu().numpy())
             all_mat_t.extend(t_mat.numpy())
-            all_dist_p.extend(p_dist.squeeze().cpu().numpy())
+            all_dist_p.extend(p_dist.squeeze(-1).cpu().numpy())
             all_dist_t.extend(t_dist.numpy())
 
-    acc_det = np.mean(np.array(all_det_p) == np.array(all_det_t)) * 100
+    acc_det  = np.mean(np.array(all_det_p) == np.array(all_det_t)) * 100
     rmse_dist = np.sqrt(mean_squared_error(all_dist_t, all_dist_p))
-    mae_dist = mean_absolute_error(all_dist_t, all_dist_p)
-    
-    print(f"\nDetection Accuracy: {acc_det:.2f}%")
-    print(f"Distance RMSE: {rmse_dist:.2f} cm")
-    print(f"Distance MAE:  {mae_dist:.2f} cm")
+    mae_dist  = mean_absolute_error(all_dist_t, all_dist_p)
 
-    fig, axes = plt.subplots(1, 3, figsize=(20, 6))
-    
+    print(f"\nDetection Accuracy : {acc_det:.2f}%")
+    print(f"Distance RMSE      : {rmse_dist:.2f} m")
+    print(f"Distance MAE       : {mae_dist:.2f} m")
+
+    # --- Detection confusion matrix ---
+    fig, ax = plt.subplots(figsize=(8, 6))
     cm_det = confusion_matrix(all_det_t, all_det_p, normalize='true')
-    sns.heatmap(cm_det, annot=True, fmt='.2f', ax=axes[0], xticklabels=det_classes, yticklabels=det_classes)
-    axes[0].set_title("Detection Accuracy")
-
-    cm_mat = confusion_matrix(all_mat_t, all_mat_p, normalize='true')
-    sns.heatmap(cm_mat, annot=True, fmt='.2f', ax=axes[1], xticklabels=mat_classes, yticklabels=mat_classes)
-    axes[1].set_title("Material Accuracy")
-
-    axes[2].scatter(all_dist_t, all_dist_p, alpha=0.5, color='teal')
-    axes[2].plot([min(all_dist_t), max(all_dist_t)], [min(all_dist_t), max(all_dist_t)], 'r--')
-    axes[2].set_title(f"Distance RMSE: {rmse_dist:.2f}cm")
-    
+    sns.heatmap(cm_det, annot=True, fmt='.2f', ax=ax,
+                xticklabels=det_classes, yticklabels=det_classes)
+    ax.set_title("Detection Confusion Matrix")
+    ax.set_xlabel("Predicted")
+    ax.set_ylabel("True")
     plt.tight_layout()
-    plt.savefig(save_dir / "results.png")
-    plt.show()
+    plt.savefig(save_dir / "detection_cm.png", dpi=150)
+    plt.close()
 
+    # --- Material confusion matrix ---
+    fig, ax = plt.subplots(figsize=(8, 6))
+    cm_mat = confusion_matrix(all_mat_t, all_mat_p, normalize='true')
+    sns.heatmap(cm_mat, annot=True, fmt='.2f', ax=ax,
+                xticklabels=mat_classes, yticklabels=mat_classes)
+    ax.set_title("Material Confusion Matrix")
+    ax.set_xlabel("Predicted")
+    ax.set_ylabel("True")
+    plt.tight_layout()
+    plt.savefig(save_dir / "material_cm.png", dpi=150)
+    plt.close()
+
+    # --- Distance scatter ---
+    fig, ax = plt.subplots(figsize=(8, 6))
+    ax.scatter(all_dist_t, all_dist_p, alpha=0.5, color='teal')
+    ax.plot([min(all_dist_t), max(all_dist_t)],
+            [min(all_dist_t), max(all_dist_t)], 'r--', label='Perfect prediction')
+    ax.set_xlabel("True distance (m)")
+    ax.set_ylabel("Predicted distance (m)")
+    ax.set_title(f"Distance  RMSE={rmse_dist:.3f}m  MAE={mae_dist:.3f}m")
+    ax.legend()
+    plt.tight_layout()
+    plt.savefig(save_dir / "distance_scatter.png", dpi=150)
+    plt.close()
+
+    # --- Metrics text ---
     with open(save_dir / "results.txt", "w") as f:
-        f.write(f"Detection Accuracy: {acc_det:.2f}%\n")
-        f.write(f"Distance RMSE: {rmse_dist:.2f} cm\n")
-        f.write(f"Distance MAE: {mae_dist:.2f} cm\n")
+        f.write(f"Detection Accuracy : {acc_det:.2f}%\n")
+        f.write(f"Distance RMSE      : {rmse_dist:.2f} m\n")
+        f.write(f"Distance MAE       : {mae_dist:.2f} m\n")
 
 def epoch_metrics(model, loader, device):
     model.eval()
@@ -107,7 +131,7 @@ def epoch_metrics(model, loader, device):
             mat_preds.extend(torch.argmax(p_mat, dim=1).cpu().numpy())
             mat_targets.extend(t_mat.numpy())
 
-            dist_preds.extend(p_dist.squeeze().cpu().numpy())
+            dist_preds.extend(p_dist.squeeze(-1).cpu().numpy())
             dist_targets.extend(t_dist.numpy())
 
     det_acc = np.mean(np.array(det_preds) == np.array(det_targets)) * 100

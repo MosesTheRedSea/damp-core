@@ -5,9 +5,6 @@ class Temporal(nn.Module):
     def __init__(self, input_channels=16, output_features=128):
         super(Temporal, self).__init__()
 
-        # Input RIR - Room Impulse Response or time-domain waveforms  (B, 16, L)
-        # Multi-scale Conv2D: kernels 3x3, 15x15, 31x31
-        
         self.conv3 = nn.Sequential(
             nn.Conv1d(input_channels, 32, 3, padding=1), 
             nn.BatchNorm1d(32), 
@@ -37,7 +34,7 @@ class Temporal(nn.Module):
         )
 
         self.se = nn.Sequential(
-            nn.AdaptiveAvgPool1d(1),   # (B, 128, 1)
+            nn.AdaptiveAvgPool1d(1),  
             nn.Conv1d(128, 8, 1),
             nn.ReLU(),
             nn.Conv1d(8, 128, 1),
@@ -49,28 +46,16 @@ class Temporal(nn.Module):
         x1 = self.conv3(x)
         x2 = self.conv15(x)
         x3 = self.conv31(x)
-        x = torch.cat([x1, x2, x3], dim=1)   # (B, 96, L)
+        
+        x = torch.cat([x1, x2, x3], dim=1)   
  
-        residual = self.proj(x)               # (B, 128, L)
-        out = self.resnet1d(x)                # (B, 128, L)
-        x = torch.relu(out + residual)        # residual connection
+        residual = self.proj(x)              
+        out = self.resnet1d(x)                
+        x = torch.relu(out + residual)       
  
-        se = self.se(x)                       # (B, 128, 1)
-        x = x * se                            # channel attention
+        se = self.se(x)                       
+        x = x * se                           
  
-        return x   # (B, 128, L)
+        return x 
 
-        # # Multi-scale Conv1D: kernels 3, 15, 31 
-        # x1 = self.conv3(x)
-        # x2 = self.conv15(x)
-        # x3 = self.conv31(x)
-
-        # # Concatenation
-        # x = torch.cat([x1, x2, x3], dim=1) 
-
-        # # Residuals
-        # residual = self.proj(x)
-        # out = self.resnet1d(x)
-        # x = torch.relu(out + residual)
-        # return x # (B, 128, L)
     
