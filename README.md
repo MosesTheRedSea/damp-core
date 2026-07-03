@@ -7,5 +7,4 @@
 
 > Developed at the Institute of Science Tokyo, Japan
 
-
 Disentangled Acoustic Multi-task Perception (DAMP) is a unified neural framework for hidden object understanding through acoustic sensing, jointly performing occluded object detection, distance estimation, and material classification.
