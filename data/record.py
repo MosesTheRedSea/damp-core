@@ -40,7 +40,14 @@ def record_speaker_data(dataset_directory, room_directory, excitation_path, occl
         recorded_filename = f"{timestamp}_{base_filename}_{i + 1}.wav"
 
         print(f"Playing excitation ({duration:.2f}s) and recording {channels}-channel response...")
-        recorded = sd.playrec(excitation, samplerate=fs, channels=channels)
+
+        # recorded = sd.playrec(excitation, samplerate=fs, channels=channels)
+
+        recorded = sd.playrec(
+            excitation,
+            samplerate=fs,
+            channels=channels,
+        )
         
         sd.wait()
         print("Recording complete.")
@@ -118,16 +125,16 @@ if __name__ == "__main__":
 
 """
 python record.py \
-    --dataset-directory "/home/moses/Moses/Research/Current/Institute of Science Tokyo/acoustic-robotics/IST-AUDN20/audio" \
-    --room-directory room_test \
+    --dataset-directory "/home/moses/Moses/Research/Current/Institute of Science Tokyo/IST-AUDN20/audio" \
+    --room-directory room_A \
     --excitation-path "/home/moses/Moses/Research/Current/Institute of Science Tokyo/acoustic-robotics/Multi-Task Acoustic Perception for Occluded Object Detection, Distance Estimation, and Material Classification/excitation.wav" \
-    --occlusion-type wood+foam \
-    --occlusion-distance 1.6 \
-    --occluded-type speaker \
-    --occluded-distance 0.5 \
-    --base-filename speaker_test \
+    --occlusion-type wood \
+    --occlusion-distance 0.1 \
+    --occluded-type cardboard_box \
+    --occluded-distance 0 \
+    --base-filename cardboard_box \
     --channels 16 \
-    --repeat 8 \
+    --repeat 10 \
     --sleep-duration 3
 """
 
@@ -138,12 +145,12 @@ python record.py \
     --room-directory room_A \
     --excitation-path "/home/moses/Moses/Research/Current/Institute of Science Tokyo/acoustic-robotics/Multi-Task Acoustic Perception for Occluded Object Detection, Distance Estimation, and Material Classification/excitation.wav" \
     --occlusion-type wood \
-    --occlusion-distance 0.1 \
-    --occluded-type ladder \
-    --occluded-distance 0.5 \
-    --base-filename ladder \
+    --occlusion-distance 0.3 \
+    --occluded-type pitcher \
+    --occluded-distance 0.1 \
+    --base-filename pitcher \
     --channels 16 \
-    --repeat 8 \
+    --repeat 10 \
     --sleep-duration 3
 """
 

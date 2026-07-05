@@ -10,7 +10,10 @@ class DampNet(nn.Module):
 
         super().__init__()
 
+        # Impulse Responses
         self.temporal_branch = Temporal()
+
+        # Spectrograms
         self.spectral_branch = Spectral()
 
         self.cross_attn = CrossBranchAttention(dim=128, num_heads=8)
@@ -18,6 +21,7 @@ class DampNet(nn.Module):
         self.temporal_pool = nn.Linear(128, 1)
         self.spectral_pool = nn.Linear(128, 1)
  
+        # Seperate features for detection & distance regression
         self.semantic_proj = nn.Sequential(  
             nn.Linear(128, 128),
             nn.LayerNorm(128),
@@ -29,6 +33,7 @@ class DampNet(nn.Module):
             nn.LayerNorm(128),
             nn.ReLU()
         )
+
 
         self.detection_head = nn.Sequential(
             nn.Linear(128, 64),
@@ -53,22 +58,23 @@ class DampNet(nn.Module):
 
     def forward(self, ir_1d, spec_2d):
 
-        t_feat = self.temporal_branch(ir_1d)   
-        s_feat = self.spectral_branch(spec_2d)  
+        temporal_feat = self.temporal_branch(ir_1d)   
+        spectral_feat = self.spectral_branch(spec_2d)  
+
+        # Bi-directional Cross Attention
+        temporal_attn, spectral_attn = self.cross_attn(temporal_feat, spectral_feat)
+
+        temporal_weights = torch.softmax(self.temporal_pool(temporal_attn), dim=1)   
+        temporal_embed = (temporal_attn * temporal_weights).sum(dim=1)                     
+
+        spectral_weights = torch.softmax(self.spectral_pool(spectral_attn), dim=1)  
+        spectral_embed = (spectral_attn * spectral_weights).sum(dim=1)                      
  
-        t_attn, s_attn = self.cross_attn(t_feat, s_feat)
+        semantic  = self.semantic_proj(spectral_embed)  
+        geometric = self.geometric_proj(temporal_embed) 
 
-        t_weights = torch.softmax(self.temporal_pool(t_attn), dim=1)   
-        t_embed = (t_attn * t_weights).sum(dim=1)                     
-
-        s_weights = torch.softmax(self.spectral_pool(s_attn), dim=1)  
-        s_embed = (s_attn * s_weights).sum(dim=1)                      
- 
-        semantic  = self.semantic_proj(s_embed)  
-        geometric = self.geometric_proj(t_embed) 
-
-        self._semantic  = semantic
-        self._geometric = geometric
+        self.semantic  = semantic
+        self.geometric = geometric
  
         det_out  = self.detection_head(semantic)
         mat_out  = self.material_head(semantic)
@@ -79,13 +85,10 @@ class DampNet(nn.Module):
 
     @property
     def orthogonality_loss(self):
-
         if not hasattr(self, '_semantic'):
             return torch.tensor(0.0, device=next(self.parameters()).device)
-   
-        s = nn.functional.normalize(self._semantic,  dim=1)
-        g = nn.functional.normalize(self._geometric, dim=1)
-       
+        s = nn.functional.normalize(self.semantic,  dim=1)
+        g = nn.functional.normalize(self.geometric, dim=1)
         cos_sim = (s * g).sum(dim=1)
         return cos_sim.pow(2).mean()
  
