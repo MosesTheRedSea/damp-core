@@ -10,7 +10,6 @@ from scipy.signal import fftconvolve, spectrogram as compute_spec
 AUDIO_DATA_ROOT = ""
 EXCITATION_PATH = ""
 SAVE_ROOT = ""
-
 START_SAMPLE = 4900
 END_SAMPLE = 6000
 FS = 16000
@@ -137,7 +136,6 @@ def extract_and_save(record, inv_filter, N, save_root,
  
     print(f"  Saved {n_ch} channels → {save_folder}")
  
-
 def print_summary(records):
     from collections import Counter
     print("\n=== Dataset Summary ===")
@@ -161,16 +159,11 @@ def print_summary(records):
  
 if __name__ == "__main__":
 
-    config_path = Path(__file__).parent.parent / "configs/config.yaml"
-    with open(config_path) as f:
-        cfg = yaml.safe_load(f)
+
+    AUDIO_DATA_ROOT = "/home/moses/Moses/Research/Current/Institute of Science Tokyo/IST-AUDN25/audio"
+    EXCITATION_PATH = '/home/moses/Moses/Research/Current/Institute of Science Tokyo/acoustic-robotics/Multi-Task Acoustic Perception for Occluded Object Detection, Distance Estimation, and Material Classification/excitation.wav'
     
-    BASE = Path(cfg["global"]["BASE"])
-    PROJECT = BASE / cfg["global"]["PROJECT"]
-    # AUDIO_DATA_ROOT = BASE / "IST-AUDN20/audio"
-    AUDIO_DATA_ROOT = "/home/moses/Moses/Research/Current/Institute of Science Tokyo/IST-AUDN20/audio"
-    EXCITATION_PATH = PROJECT / "excitation.wav"
-    SAVE_ROOT = Path(__file__).parent / "processed"
+    SAVE_ROOT = f'{Path(__file__).parent}/processed'
 
     os.makedirs(SAVE_ROOT, exist_ok=True)
 

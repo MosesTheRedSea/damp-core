@@ -129,6 +129,10 @@ if __name__ == '__main__':
         "pitcher":       "metal",
         "ladder":        "metal",
         "sandbag":       "sand",
+        "ceramic_mug":   "ceramic",
+        "glass_mug":     "glass",
+        "plate":         "ceramic",
+        "ceramic_bowl":  "ceramic"
     }
 
     OBJ_CLASSES = [
@@ -140,6 +144,10 @@ if __name__ == '__main__':
         "pitcher",
         "ladder",
         "sandbag",
+        "ceramic_mug",
+        "glass_mug",
+        "plate",
+        "ceramic_bowl"
     ]
 
     MAT_CLASSES = [
@@ -148,6 +156,8 @@ if __name__ == '__main__':
         "plastic",
         "metal",
         "sand",
+        "ceramic",
+        "glass"
     ]
 
     det_map = {name: i for i, name in enumerate(OBJ_CLASSES)}

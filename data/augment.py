@@ -63,15 +63,8 @@ def save_augmented(source_folder, output_folder, aug_fn, aug_name):
 
 if __name__ == "__main__":
 
-    config_path = Path(__file__).parent.parent / "configs/config.yaml"
-    with open(config_path) as f:
-        cfg = yaml.safe_load(f)
-    
-    BASE = Path(cfg["global"]["BASE"])
-    PROJECT = BASE / cfg["global"]["PROJECT"]
-
+    EXCITATION_PATH = '/home/moses/Moses/Research/Current/Institute of Science Tokyo/acoustic-robotics/Multi-Task Acoustic Perception for Occluded Object Detection, Distance Estimation, and Material Classification/excitation.wav'
     PROCESSED_DATA_ROOT = Path(__file__).parent / "processed"
-    EXCITATION_PATH = PROJECT / "excitation.wav"
     AUGMENTED_ROOT = Path(__file__).parent / "augmented"
     os.makedirs(AUGMENTED_ROOT, exist_ok=True)
 

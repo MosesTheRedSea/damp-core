@@ -4,54 +4,6 @@ PROJECT = "Multi-Task Acoustic Perception for Occluded Object Detection, Distanc
 LOSS = 1e-4 
 EPOCHS = 100
 
-TRAIN_MATERIAL = {  
-    "none",
-    "metal",
-    "plastic",
-    "paper_cardboard",
-    "sand"
-}
-
-TRAIN_OBJECT = {
-
-    "no_object",
-
-    # paper_cardboard
-    "cardboard_box",
-
-    # plastic
-    "speaker",
-
-    # metal
-    "pot",
-    "pitcher",
-    "strainer",
-    "ladder",
-
-    #sand
-    "sandbag"
-}
-
-TRAIN_OBJECT_TO_MATERIAL = {
-
-    "no_object": "none", # completed
-
-    # paper_cardboard
-    "cardboard_box": "paper_cardboard", # complete
-
-    # plastic
-    "speaker": "plastic", # completed
-
-    # metal
-    "pot": "metal",  # completed
-    "strainer": "metal", # completed
-    "pitcher": "metal", # completed
-    "ladder": "metal", # completed
-
-    "sandbag": "sand"
-}
-
-
 OBJECT_TO_MATERIAL = {
 
         "no_object": "none", # completed
@@ -59,11 +11,13 @@ OBJECT_TO_MATERIAL = {
         # fabric
         "bookbag": "fabric",
         "rags": "fabric",
+        "hoodie": "fabric",
 
         # paper_cardboard
         "textbooks": "paper_cardboard", # complete
         "paper": "paper_cardboard", # complete
         "cardboard_box": "paper_cardboard", # complete
+        "bardboard_sheet": "paper_cardboard",
 
         # plastic
         "plastic_bottle": "plastic", # complete
@@ -85,9 +39,10 @@ OBJECT_TO_MATERIAL = {
         "glass_bottle": "glass", # complete
         "glass_cup": "glass", # complete
         "glass_bowl": "glass",
+        "glass_mup": "glass",
 
         # ceramic
-        "mug": "ceramic", # complete
+        "ceramic_mug": "ceramic", # complete
         "ceramic_bowl": "ceramic", #complete
         "plate": "ceramic", # complete
 
