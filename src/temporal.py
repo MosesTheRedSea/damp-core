@@ -3,6 +3,7 @@ from torch import nn
 
 class Temporal(nn.Module):
     def __init__(self, input_channels=16, output_features=128):
+        
         super(Temporal, self).__init__()
 
         self.conv3 = nn.Sequential(

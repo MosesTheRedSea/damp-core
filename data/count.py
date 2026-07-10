@@ -2,7 +2,9 @@ import sys
 from pathlib import Path
 
 def count_wav_files(root_dir):
+
     root = Path(root_dir)
+    
     if not root.is_dir():
         print(f"Error: '{root_dir}' is not a valid directory.")
         sys.exit(1)
@@ -16,4 +18,5 @@ def count_wav_files(root_dir):
 if __name__ == "__main__":
 
     directory = "/home/moses/Moses/Research/Current/Institute of Science Tokyo/IST-AUDN25/audio/room_A"
+
     count_wav_files(directory)

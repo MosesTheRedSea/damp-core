@@ -68,7 +68,7 @@ class MultiTaskLoss(nn.Module):
     Each loss is weighted before summation.
     """
 
-    def __init__(self, w_det=1.0, w_dist=1.0, w_mat=1.0, ortho_lambda=0.01, num_det_classes=8, num_mat_classes=5, max_dist=1.5):
+    def __init__(self, w_det=1.0, w_dist=3.0, w_mat=1.0, ortho_lambda=0.01, num_det_classes=8, num_mat_classes=5, max_dist=1.5):
         
         super().__init__()
 
@@ -110,31 +110,40 @@ class MultiTaskLoss(nn.Module):
 
 if __name__ == '__main__':
 
-    parser = argparse.ArgumentParser(description="Disentangled Acoustic Multi-task Perception (DAMP) ")
-    
+    parser = argparse.ArgumentParser(description="Disentangled Acoustic Multi-task Perception (DAMP)")
     parser.add_argument('--pr', type=str, default="", help="Processed data directory")
     parser.add_argument('--ar', type=str, default="", help="Augmented data directory")
-
     parser.add_argument('--lr', type=float, default=1e-4, help='Learning rate')
     parser.add_argument('--batch_size', type=int, default=32, help='Size of batches')
     parser.add_argument('--num_epochs', type=int, default=1000, help='Number of batch iterations')
     parser.add_argument('--weight_decay', type=int, default=None, help="Wegiht Decay")
 
     OBJECT_TO_MATERIAL = {
-        "no_object":     "none",
+        "no_object": "none",
         "cardboard_box": "paper_cardboard",
-        "speaker":       "plastic",
-        "pot":           "metal",
-        "strainer":      "metal",
-        "pitcher":       "metal",
-        "ladder":        "metal",
-        "sandbag":       "sand",
-        "ceramic_mug":   "ceramic",
-        "glass_mug":     "glass",
-        "plate":         "ceramic",
-        "ceramic_bowl":  "ceramic"
+        "speaker": "plastic",
+        "pot": "metal",
+        "strainer": "metal",
+        "pitcher": "metal",
+        "ladder": "metal",
+        "ceramic_mug": "ceramic",
+        "glass_mug": "glass",
+        "plate": "ceramic",
+        "ceramic_bowl": "ceramic",
+        "trash_bin": "plastic",
+        "metal_cup": "metal",
+        "plastic_bottle": "plastic",
+        "plastic_bowl": "plastic",
+        "plaastic_container": "plastic",
+        "plastic_sport": "plastic",
+        "plastic_shaker": "plastic",
+        "monitor":"plastic",
+        "teapot": "ceramic",
+        "glass_vodka": "glass", 
+        "glass_shooter": "glass"
     }
 
+    
     OBJ_CLASSES = [
         "no_object",
         "cardboard_box",
@@ -143,11 +152,21 @@ if __name__ == '__main__':
         "strainer",
         "pitcher",
         "ladder",
-        "sandbag",
         "ceramic_mug",
         "glass_mug",
         "plate",
-        "ceramic_bowl"
+        "ceramic_bowl",
+        "trash_bin",
+        "metal_cup",
+        "plastic_bottle",
+        "plastic_bowl",
+        "plaastic_container",
+        "plastic_sport",
+        "plastic_shaker",
+        "monitor",
+        "teapot",
+        "glass_vodka", 
+        "glass_shooter"
     ]
 
     MAT_CLASSES = [
@@ -155,7 +174,6 @@ if __name__ == '__main__':
         "paper_cardboard",
         "plastic",
         "metal",
-        "sand",
         "ceramic",
         "glass"
     ]
@@ -182,7 +200,6 @@ if __name__ == '__main__':
     MAX_DIST = max(all_distances)
     print(f"Max occlusion distance: {MAX_DIST}m")
 
-    
     # Temporary dataset for labels
     temp_dataset = ImpulseData(
         original_folders,
@@ -253,7 +270,7 @@ if __name__ == '__main__':
     LR = 1e-3
     WEIGHT_DECAY = 1e-4
     DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    PATIENCE = 15
+    PATIENCE = 20
     ORTHO_LAMBDA = 0.01
     VAL_SMOOTH = 0.9
 
@@ -315,7 +332,6 @@ if __name__ == '__main__':
             train_dist.append(l_dist)
             train_mat.append(l_mat)
 
-
         model.eval()
         val_losses, val_det, val_dist, val_mat = [], [], [], []
         
@@ -353,6 +369,12 @@ if __name__ == '__main__':
 
         scheduler.step()
 
+        score = (
+            0.4 * (det_acc / 100.0) +
+            0.4 * (mat_acc / 100.0) -
+            0.2 * mae
+        )
+
         print(
             f"Epoch [{epoch+1:3d}/{EPOCHS}] "
             f"Train: {avg_train:.4f} | Val: {avg_val:.4f} | "
@@ -363,8 +385,9 @@ if __name__ == '__main__':
             f"LR: {scheduler.get_last_lr()[0]:.2e}"
         )
 
-        if smoothed_val < best_val_loss:
-            best_val_loss  = smoothed_val
+
+        if score > best_score:
+            best_score = score
             early_stop_cnt = 0
             torch.save(model.state_dict(), model_run_dir / "best_model.pth")
         else:
@@ -373,8 +396,16 @@ if __name__ == '__main__':
                 print(f"Early stopping at epoch {epoch+1}")
                 break
 
-    torch.save(model.state_dict(), model_run_dir / "final_model.pth")
+        # if smoothed_val < best_val_loss:
+        #     best_val_loss  = smoothed_val
+        #     early_stop_cnt = 0
+        #     torch.save(model.state_dict(), model_run_dir / "best_model.pth")
+        # else:
+        #     early_stop_cnt += 1
+        #     if early_stop_cnt >= PATIENCE:
+        #         print(f"Early stopping at epoch {epoch+1}")
+        #         break
 
+    torch.save(model.state_dict(), model_run_dir / "final_model.pth")
     model.load_state_dict(torch.load(model_run_dir / "best_model.pth"))
     run_evaluation(model, val_loader, DEVICE, OBJ_CLASSES, MAT_CLASSES, result_run_dir)
- 

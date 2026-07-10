@@ -65,11 +65,12 @@ def record_speaker_data(dataset_directory, room_directory, excitation_path, occl
         end_sample = 22000
         rir_cropped = rir[start_sample:end_sample]
 
+
         # start_sample = 21300
         # end_sample = 22000
         # rir_cropped = rir[start_sample:end_sample]
 
-        plot_ir(start_sample, end_sample, rir_cropped, i)
+        # plot_ir(start_sample, end_sample, rir_cropped, i)
 
         if i < repeat - 1:
             print(f"Waiting {sleep_duration} seconds before next recording...")
@@ -123,18 +124,19 @@ if __name__ == "__main__":
         sleep_duration=args.sleep_duration,
     )
 
+
 """
 python record.py \
     --dataset-directory "/home/moses/Moses/Research/Current/Institute of Science Tokyo/IST-AUDN25/audio" \
     --room-directory room_A \
     --excitation-path "/home/moses/Moses/Research/Current/Institute of Science Tokyo/acoustic-robotics/Multi-Task Acoustic Perception for Occluded Object Detection, Distance Estimation, and Material Classification/excitation.wav" \
-    --occlusion-type none \
-    --occlusion-distance 0.0 \
-    --occluded-type no_object \
+    --occlusion-type wood \
+    --occlusion-distance 0.5 \
+    --occluded-type glass_shooter \
     --occluded-distance 0.0 \
-    --base-filename no_object \
+    --base-filename glass_shooter \
     --channels 16 \
-    --repeat 10 \
+    --repeat 20 \
     --sleep-duration 3
 """
 

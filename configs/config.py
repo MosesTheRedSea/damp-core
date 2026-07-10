@@ -6,12 +6,18 @@ EPOCHS = 100
 
 OBJECT_TO_MATERIAL = {
 
-        "no_object": "none", # completed
+        # make sure to include orientation of the items that you record 
+        # also edit orientation of the chair
 
-        # fabric
-        "bookbag": "fabric",
-        "rags": "fabric",
-        "hoodie": "fabric",
+        # focus on getting sim2 real down to generate data, train the simulator
+        # use the rover to test whether the data I record, can it acatually estimate the surrounding objects using the model I trained from the simulator.
+        # if those recordings can be used to train the model. Simulator does the bulk of the training.
+        # other data from the other room I can use it for testing
+        # take my measurement to the other room and see whether it works
+
+        # Sim2Real - MAINLY IMPORTANT TO GENERATE DATA 
+
+        "no_object": "none", # completed 
 
         # paper_cardboard
         "textbooks": "paper_cardboard", # complete
@@ -33,32 +39,24 @@ OBJECT_TO_MATERIAL = {
         "pitcher": "metal", # completed
         "sign": "metal", 
         "ladder": "metal", # completed
-        "rolling_chair": "metal",
+        "rolling_chair": "metal", # make sure to record this
+        "metal_cup":"cup",
 
         # glass
-        "glass_bottle": "glass", # complete
-        "glass_cup": "glass", # complete
-        "glass_bowl": "glass",
-        "glass_mup": "glass",
+        "glass_vodka": "glass", # complete
+        "glass_shooter": "glass",
+        "glass_mug": "glass",
 
         # ceramic
         "ceramic_mug": "ceramic", # complete
         "ceramic_bowl": "ceramic", #complete
         "plate": "ceramic", # complete
-
-        # sand
-        "sandbag": "sand"
+        "teapot": "ceramic",
     }
 
 OBJ_CLASSES = [
 
     "no_object",
-
-    # fabric
-    "bookbag",
-    "rags",
-
-    # wood
 
     # paper_cardboard
     "textbooks",
@@ -88,10 +86,9 @@ OBJ_CLASSES = [
     # ceramic
     "mug",
     "ceramic_bowl",
-    "plate",
-
-    #sand
-    "sandbag"
+    "plate"
+    "helmet"
+   # "monitor" # record this
 ]
 
 # 9 Materials
@@ -100,9 +97,7 @@ MAT_CLASSES = [
     "wood",
     "metal",
     "plastic",
-    "fabric",
     "glass",
     "ceramic",
     "paper_cardboard",
-    "sand",
 ]

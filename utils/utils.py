@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import soundfile as sf
 from configs.config import OBJECT_TO_MATERIAL
-
+from sklearn.metrics import classification_report
 from torch.utils.data import Dataset
 from scipy.signal import fftconvolve, spectrogram as compute_spec, correlate
 from sklearn.metrics import confusion_matrix, mean_squared_error, mean_absolute_error
@@ -49,6 +49,32 @@ def run_evaluation(model, loader, device, det_classes, mat_classes, save_dir):
     all_mat_p, all_mat_t = [], []
     all_dist_p, all_dist_t = [], []
 
+    OBJ_CLASSES = [
+        "no_object",
+        "cardboard_box",
+        "speaker",
+        "pot",
+        "strainer",
+        "pitcher",
+        "ladder",
+        "sandbag",
+        "ceramic_mug",
+        "glass_mug",
+        "plate",
+        "ceramic_bowl",
+        "trash_bin"
+    ]
+
+    MAT_CLASSES = [
+        "none",
+        "paper_cardboard",
+        "plastic",
+        "metal",
+        "sand",
+        "ceramic",
+        "glass"
+    ]
+
     with torch.no_grad():
         for ir, spec, t_det, t_dist, t_mat in loader:
             ir, spec = ir.to(device), spec.to(device)
@@ -68,7 +94,9 @@ def run_evaluation(model, loader, device, det_classes, mat_classes, save_dir):
     print(f"Distance RMSE      : {rmse_dist:.2f} m")
     print(f"Distance MAE       : {mae_dist:.2f} m")
 
-    # --- Detection confusion matrix ---
+    print(classification_report(all_det_t, all_det_p, target_names=OBJ_CLASSES))
+    print(classification_report(all_mat_t, all_mat_p, target_names=MAT_CLASSES))
+
     fig, ax = plt.subplots(figsize=(8, 6))
     cm_det = confusion_matrix(all_det_t, all_det_p, normalize='true')
     sns.heatmap(cm_det, annot=True, fmt='.2f', ax=ax,
@@ -80,7 +108,6 @@ def run_evaluation(model, loader, device, det_classes, mat_classes, save_dir):
     plt.savefig(save_dir / "detection_cm.png", dpi=150)
     plt.close()
 
-    # --- Material confusion matrix ---
     fig, ax = plt.subplots(figsize=(8, 6))
     cm_mat = confusion_matrix(all_mat_t, all_mat_p, normalize='true')
     sns.heatmap(cm_mat, annot=True, fmt='.2f', ax=ax,
@@ -92,7 +119,6 @@ def run_evaluation(model, loader, device, det_classes, mat_classes, save_dir):
     plt.savefig(save_dir / "material_cm.png", dpi=150)
     plt.close()
 
-    # --- Distance scatter ---
     fig, ax = plt.subplots(figsize=(8, 6))
     ax.scatter(all_dist_t, all_dist_p, alpha=0.5, color='teal')
     ax.plot([min(all_dist_t), max(all_dist_t)],
@@ -105,7 +131,6 @@ def run_evaluation(model, loader, device, det_classes, mat_classes, save_dir):
     plt.savefig(save_dir / "distance_scatter.png", dpi=150)
     plt.close()
 
-    # --- Metrics text ---
     with open(save_dir / "results.txt", "w") as f:
         f.write(f"Detection Accuracy : {acc_det:.2f}%\n")
         f.write(f"Distance RMSE      : {rmse_dist:.2f} m\n")

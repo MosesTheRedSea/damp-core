@@ -34,7 +34,6 @@ class DampNet(nn.Module):
             nn.ReLU()
         )
 
-
         self.detection_head = nn.Sequential(
             nn.Linear(128, 64),
             nn.ReLU(),
@@ -85,7 +84,7 @@ class DampNet(nn.Module):
 
     @property
     def orthogonality_loss(self):
-        if not hasattr(self, '_semantic'):
+        if not hasattr(self, 'semantic'):
             return torch.tensor(0.0, device=next(self.parameters()).device)
         s = nn.functional.normalize(self.semantic,  dim=1)
         g = nn.functional.normalize(self.geometric, dim=1)

@@ -46,11 +46,11 @@ class CrossBranchAttention(nn.Module):
         t = temporal_feat.transpose(1, 2)                         
         
         B, C, H, W = spec_feat.shape
-        s = spec_feat.view(B, C, H * W).transpose(1, 2)          
 
+        s = spec_feat.view(B, C, H * W).transpose(1, 2)          
         t_attn, _ = self.t_to_s(query=t, key=s, value=s)
 
-        t = self.temporal_norm(t + t_attn)                         
+        t = self.temporal_norm(t + t_attn)  \
         t = self.temporal_norm2(t + self.temporal_ffn(t))          
 
         s_attn, _ = self.s_to_t(query=s, key=t, value=t)
