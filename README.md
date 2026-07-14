@@ -13,7 +13,7 @@ Disentangled Acoustic Multi-task Perception (DAMP) is a unified neural framework
 ### Setup
 ```bash
 # Clone the repository
-git clone [https://github.com](https://github.com/MosesTheRedSea/damp-core.git)
+git clone https://github.com/MosesTheRedSea/damp-core.git
 cd damp-core
 
 # Create virtual environment
