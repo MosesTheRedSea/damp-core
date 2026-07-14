@@ -9,3 +9,17 @@
 
 
 Disentangled Acoustic Multi-task Perception (DAMP) is a unified neural framework for hidden object understanding through acoustic sensing, jointly performing occluded object detection, distance estimation, and material classification.
+
+### Setup
+```bash
+# Clone the repository
+git clone [https://github.com](https://github.com/MosesTheRedSea/damp-core.git)
+cd damp-core
+
+# Create virtual environment
+uv pip install -r pyproject.toml
+
+# Activate a virtual environment
+source .venv/bin/activate
+
+```
