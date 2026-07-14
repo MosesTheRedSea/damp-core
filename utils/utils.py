@@ -43,7 +43,7 @@ def compute_spectrogram(ir, fs, nperseg=256, noverlap=128):
     _, _, Sxx = compute_spec(ir, fs=fs, nperseg=nperseg, noverlap=noverlap)
     return Sxx
 
-def run_evaluation(model, loader, device, det_classes, mat_classes, save_dir):
+def run_evaluation(model, loader, device, det_classes, mat_classes, save_dir, history=None):
     model.eval()
     all_det_p, all_det_t = [], []
     all_mat_p, all_mat_t = [], []
@@ -135,6 +135,223 @@ def run_evaluation(model, loader, device, det_classes, mat_classes, save_dir):
         f.write(f"Detection Accuracy : {acc_det:.2f}%\n")
         f.write(f"Distance RMSE      : {rmse_dist:.2f} m\n")
         f.write(f"Distance MAE       : {mae_dist:.2f} m\n")
+
+    if history is not None:
+
+    epochs = np.arange(
+        1,
+        len(history["train_loss"])+1
+    )
+
+
+    # Loss curve
+    plt.figure(figsize=(8,5))
+    plt.plot(epochs, history["train_loss"], label="Train")
+    plt.plot(epochs, history["val_loss"], label="Validation")
+    plt.xlabel("Epoch")
+    plt.ylabel("Loss")
+    plt.title("Training and Validation Loss")
+    plt.legend()
+    plt.grid()
+    plt.savefig(save_dir/"loss_curve.png", dpi=300)
+    plt.close()
+
+
+
+    # Individual task losses
+    fig, ax = plt.subplots(1,3,figsize=(15,4))
+
+    ax[0].plot(epochs, history["train_det_loss"])
+    ax[0].plot(epochs, history["val_det_loss"])
+    ax[0].set_title("Detection Loss")
+
+    ax[1].plot(epochs, history["train_dist_loss"])
+    ax[1].plot(epochs, history["val_dist_loss"])
+    ax[1].set_title("Distance Loss")
+
+    ax[2].plot(epochs, history["train_mat_loss"])
+    ax[2].plot(epochs, history["val_mat_loss"])
+    ax[2].set_title("Material Loss")
+
+    plt.tight_layout()
+    plt.savefig(save_dir/"task_losses.png",dpi=300)
+    plt.close()
+
+
+
+    # Accuracy
+
+    plt.figure(figsize=(8,5))
+
+    plt.plot(
+        epochs,
+        history["det_acc"],
+        label="Object Detection"
+    )
+
+    plt.plot(
+        epochs,
+        history["mat_acc"],
+        label="Material"
+    )
+
+    plt.xlabel("Epoch")
+    plt.ylabel("Accuracy (%)")
+    plt.legend()
+    plt.grid()
+
+    plt.savefig(
+        save_dir/"accuracy_curve.png",
+        dpi=300
+    )
+
+    plt.close()
+
+
+
+    # Distance regression
+
+    plt.figure(figsize=(8,5))
+
+    plt.plot(
+        epochs,
+        history["rmse"],
+        label="RMSE"
+    )
+
+    plt.plot(
+        epochs,
+        history["mae"],
+        label="MAE"
+    )
+
+    plt.xlabel("Epoch")
+    plt.ylabel("Meters")
+    plt.legend()
+    plt.grid()
+
+    plt.savefig(
+        save_dir/"distance_error.png",
+        dpi=300
+    )
+
+    plt.close()
+
+
+
+    # Learning rate
+
+    plt.figure(figsize=(8,5))
+
+    plt.plot(
+        epochs,
+        history["lr"]
+    )
+
+    plt.xlabel("Epoch")
+    plt.ylabel("Learning Rate")
+    plt.yscale("log")
+
+    plt.grid()
+
+    plt.savefig(
+        save_dir/"learning_rate.png",
+        dpi=300
+    )
+
+    plt.close()
+
+
+
+    # Runtime
+
+    plt.figure(figsize=(8,5))
+
+    plt.plot(
+        epochs,
+        history["epoch_time"]
+    )
+
+    plt.xlabel("Epoch")
+    plt.ylabel("Seconds")
+
+    plt.title("Training Time Per Epoch")
+
+    plt.grid()
+
+    plt.savefig(
+        save_dir/"epoch_runtime.png",
+        dpi=300
+    )
+
+    plt.close()
+
+
+
+    # ICASSP summary figure
+
+    fig, axs = plt.subplots(
+        2,
+        2,
+        figsize=(12,9)
+    )
+
+
+    axs[0,0].plot(
+        epochs,
+        history["train_loss"]
+    )
+
+    axs[0,0].plot(
+        epochs,
+        history["val_loss"]
+    )
+
+    axs[0,0].set_title("Loss")
+
+
+    axs[0,1].plot(
+        epochs,
+        history["det_acc"]
+    )
+
+    axs[0,1].plot(
+        epochs,
+        history["mat_acc"]
+    )
+
+    axs[0,1].set_title("Accuracy")
+
+
+    axs[1,0].plot(
+        epochs,
+        history["rmse"]
+    )
+
+    axs[1,0].plot(
+        epochs,
+        history["mae"]
+    )
+
+    axs[1,0].set_title("Distance")
+
+
+    axs[1,1].plot(
+        epochs,
+        history["epoch_time"]
+    )
+
+    axs[1,1].set_title("Runtime")
+
+
+    plt.tight_layout()
+
+    plt.savefig(
+        save_dir/"training_summary.png",
+        dpi=300
+    )
+
+    plt.close()
 
 def epoch_metrics(model, loader, device):
     model.eval()

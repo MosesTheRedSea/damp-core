@@ -2,6 +2,7 @@ import os
 import json
 import torch
 import math
+import time
 import argparse
 import torch.nn as nn
 import torch.nn.functional as F
@@ -27,6 +28,7 @@ from data.augment import (add_white_noise, random_time_shift, amplitude_scaling,
 class ImpulseData(Dataset):
 
     def __init__(self, folders, det_mapping, mat_mapping, obj_to_mat):
+
         self.folders = folders
         self.det_mapping = det_mapping
         self.mat_mapping = mat_mapping
@@ -61,6 +63,7 @@ class ImpulseData(Dataset):
 
 
 class MultiTaskLoss(nn.Module):
+
     """
     Combines:
       - Detection classification loss
@@ -71,7 +74,7 @@ class MultiTaskLoss(nn.Module):
     Each loss is weighted before summation.
     """
 
-    def __init__(self, w_det=1.0, w_dist=3.0, w_mat=1.0, ortho_lambda=0.01, num_det_classes=8, num_mat_classes=5, max_dist=1.5):
+    def __init__(self, w_det=1.0, w_dist=3.0, w_mat=1.0, ortho_lambda=0.01, num_det_classes=22, num_mat_classes=5, max_dist=1.5):
         
         super().__init__()
 
@@ -84,26 +87,18 @@ class MultiTaskLoss(nn.Module):
         self.num_mat_classes = num_mat_classes
         self.max_dist = max_dist
 
-    def forward(self, p_det, t_det,
-                      p_dist, t_dist,
-                      p_mat, t_mat,
-                      ortho_loss=None):
+    def forward(self, p_det, t_det, p_dist, t_dist, p_mat, t_mat, ortho_loss=None):
 
         loss_det  = F.cross_entropy(p_det, t_det)
         loss_mat  = F.cross_entropy(p_mat, t_mat)
-
-        loss_dist = F.l1_loss(p_dist.squeeze(-1), t_dist) # |prediciton - target|
+        loss_dist = F.l1_loss(p_dist.squeeze(-1), t_dist)  # |prediciton - target|
 
         # Normalise each loss to roughly [0, 1]
         loss_det_norm  = loss_det  / math.log(self.num_det_classes)
         loss_mat_norm  = loss_mat  / math.log(self.num_mat_classes)
         loss_dist_norm = loss_dist / self.max_dist
 
-        total = (
-            self.w_det  * loss_det_norm  +
-            self.w_mat  * loss_mat_norm  +
-            self.w_dist * loss_dist_norm
-        )
+        total = (self.w_det  * loss_det_norm  + self.w_mat  * loss_mat_norm  + self.w_dist * loss_dist_norm)
 
         if ortho_loss is not None:
             total = total + self.ortho_lambda * torch.clamp(ortho_loss, 0, 10)
@@ -128,7 +123,7 @@ def get_object_groups(root):
 
         objects[obj].append(folder)
 
-    return objects`
+    return objects
 
 
 if __name__ == '__main__':
@@ -159,7 +154,7 @@ if __name__ == '__main__':
         "metal_cup": "metal",
         "plastic_bottle": "plastic",
         "plastic_bowl": "plastic",
-        "plaastic_container": "plastic",
+        "plastic_container": "plastic",
         "plastic_sport": "plastic",
         "plastic_shaker": "plastic",
         "monitor":"plastic",
@@ -254,7 +249,7 @@ if __name__ == '__main__':
 
         train_obj, val_obj = train_test_split(
             folders,
-            test_size=0.15,
+            test_size=0.20,
             random_state=42
         )
 
@@ -269,16 +264,6 @@ if __name__ == '__main__':
     #     stratify=labels,
     #     random_state=42
     # )
-
-    # Add augmentations ONLY to training set
-    train_full = []
-    for folder in train_folders:
-        train_full.append(folder)
-        name = folder.name
-        for aug in ["noise", "shift", "scale"]:
-            aug_folder = augmented_root / f"{aug}_{name}"
-            if aug_folder.exists():
-                train_full.append(aug_folder)
 
     # Validation remains ORIGINAL ONLY
     val_full = val_folders
@@ -303,6 +288,17 @@ if __name__ == '__main__':
                     fn,
                     name
                 )
+    
+
+     # Add augmentations ONLY to training set
+    train_full = []
+    for folder in train_folders:
+        train_full.append(folder)
+        name = folder.name
+        for aug in ["noise", "shift", "scale", "bandpass", "eq", "dropout"]:
+            aug_folder = augmented_root / f"{aug}_{name}"
+            if aug_folder.exists():
+                train_full.append(aug_folder)
 
     train_dataset = ImpulseData(
         train_full,
@@ -337,6 +333,27 @@ if __name__ == '__main__':
 
     aug_count = len(train_full) - len(train_folders)
     print(f"Augmented samples added: {aug_count}")
+
+    train_objects = set()
+
+    for f in train_full:
+        with open(f/"metadata.json") as file:
+            meta=json.load(file)
+        train_objects.add(meta["object_type"])
+
+    test_objects = set()
+
+    for f in val_full:
+        with open(f/"metadata.json") as file:
+            meta=json.load(file)
+        test_objects.add(meta["object_type"])
+
+
+    print("TRAIN OBJECTS:", train_objects)
+    print("TEST OBJECTS:", test_objects)
+
+    print("OVERLAP:", train_objects.intersection(test_objects))
+
 
     BATCH_SIZE = 32
     EPOCHS = 100
@@ -377,7 +394,38 @@ if __name__ == '__main__':
     early_stop_cnt  = 0
     best_score = -float("inf")
 
+    history = {
+
+        # losses
+        "train_loss": [],
+        "val_loss": [],
+
+        "train_det_loss": [],
+        "train_dist_loss": [],
+        "train_mat_loss": [],
+
+        "val_det_loss": [],
+        "val_dist_loss": [],
+        "val_mat_loss": [],
+
+        # performance
+        "det_acc": [],
+        "mat_acc": [],
+
+        "rmse": [],
+        "mae": [],
+
+        # optimization
+        "lr": [],
+        "ortho_loss": [],
+
+        # runtime
+        "epoch_time": []
+    }
+
     for epoch in range(EPOCHS):
+
+        epoch_start = time.time()
 
         model.train()
         train_losses, train_det, train_dist, train_mat = [], [], [], []
@@ -441,6 +489,39 @@ if __name__ == '__main__':
 
         det_acc, mat_acc, rmse, mae = epoch_metrics(model, val_loader, DEVICE)
 
+        epoch_time = time.time() - epoch_start
+
+        history["train_loss"].append(avg_train)
+        history["val_loss"].append(avg_val)
+
+        history["train_det_loss"].append(avg_train_det)
+        history["train_dist_loss"].append(avg_train_dist)
+        history["train_mat_loss"].append(avg_train_mat)
+
+        history["val_det_loss"].append(avg_val_det)
+        history["val_dist_loss"].append(avg_val_dist)
+        history["val_mat_loss"].append(avg_val_mat)
+
+        history["det_acc"].append(det_acc)
+        history["mat_acc"].append(mat_acc)
+
+        history["rmse"].append(rmse)
+        history["mae"].append(mae)
+
+        history["lr"].append(
+            scheduler.get_last_lr()[0]
+        )
+
+        history["epoch_time"].append(epoch_time)
+
+
+        if hasattr(model, "orthogonality_loss"):
+            history["ortho_loss"].append(
+                model.orthogonality_loss.item()
+            )
+        else:
+            history["ortho_loss"].append(0)
+
         scheduler.step()
 
         score = (
@@ -463,7 +544,7 @@ if __name__ == '__main__':
         if score > best_score:
             best_score = score
             early_stop_cnt = 0
-            torch.save(model.state_dict(), model_run_dir / "best_model.pth")
+            torch.save(model.state_dict(), model_run_dir / "damp_best.pth")
         else:
             early_stop_cnt += 1
             if early_stop_cnt >= PATIENCE:
@@ -481,6 +562,9 @@ if __name__ == '__main__':
         #         break
 
     torch.save(model.state_dict(), model_run_dir / "damp_final.pth")
-    model.load_state_dict(torch.load(model_run_dir / "damp_best.pth"))
+    model.load_state_dict(torch.load(model_run_dir / "damp_final.pth"))
 
-    run_evaluation(model, val_loader, DEVICE, OBJ_CLASSES, MAT_CLASSES, result_run_dir)
+    with open(result_run_dir / "training_history.json", "w") as f:
+        json.dump(history, f, indent=4)
+
+    run_evaluation(model, val_loader, DEVICE, OBJ_CLASSES, MAT_CLASSES, result_run_dir, history)
