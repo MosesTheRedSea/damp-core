@@ -87,13 +87,19 @@ def load_excitation(excitation_path):
     return inv_filter, N, fs
 
 def extract_and_save(record, inv_filter, N, save_root,
-                     start_sample, end_sample, fs, num_channels):
+                     start_sample, end_sample, fs, num_channels, audio_data_root):
 
     filepath = record["filepath"]
  
-    rel = os.path.relpath(filepath, start=os.path.dirname(os.path.dirname(filepath)))
-    safe_name = rel.replace(os.sep, "_").replace(" ", "_").rstrip(".wav")
-    save_folder = os.path.join(save_root, safe_name)
+    # rel = os.path.relpath(filepath, start=os.path.dirname(os.path.dirname(filepath)))
+    # safe_name = rel.replace(os.sep, "_").replace(" ", "_").rstrip(".wav")
+
+    relative = os.path.relpath(filepath,audio_data_root)
+
+    relative_no_ext = os.path.splitext(relative)[0]
+    save_folder = Path(save_root) / relative_no_ext
+
+    # save_folder = os.path.join(save_root, safe_name)
     os.makedirs(save_folder, exist_ok=True)
  
     try:

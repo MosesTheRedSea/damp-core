@@ -21,6 +21,9 @@ from utils.utils import get_next_run_folder
 from utils.utils import epoch_metrics
 from utils.utils import run_evaluation
 
+from data.augment import (add_white_noise, random_time_shift, amplitude_scaling, random_bandpass, random_eq, random_dropout, save_augmented)
+
+
 class ImpulseData(Dataset):
 
     def __init__(self, folders, det_mapping, mat_mapping, obj_to_mat):
@@ -49,7 +52,7 @@ class ImpulseData(Dataset):
         spec_tensor = torch.from_numpy(np.stack(spec_list)).float()
 
         t_det  = torch.tensor(self.det_mapping[meta["object_type"]]).long()
-        t_dist = torch.tensor(meta["occlusion_distance"]).float()
+        t_dist = torch.tensor(  meta["occlusion_distance"] + meta["object_distance"]).float()
 
         mat_key = self.obj_to_mat[meta["object_type"]]
         t_mat   = torch.tensor(self.mat_mapping[mat_key]).long()
@@ -107,6 +110,26 @@ class MultiTaskLoss(nn.Module):
 
         return total, (loss_det_norm.item(), loss_dist_norm.item(), loss_mat_norm.item())
 
+def get_object_groups(root):
+
+    objects = {}
+
+    for meta_path in root.rglob("metadata.json"):
+
+        with open(meta_path) as f:
+            meta=json.load(f)
+
+        obj = meta["object_type"]
+
+        folder = meta_path.parent
+
+        if obj not in objects:
+            objects[obj]=[]
+
+        objects[obj].append(folder)
+
+    return objects`
+
 
 if __name__ == '__main__':
 
@@ -118,7 +141,9 @@ if __name__ == '__main__':
     parser.add_argument('--num_epochs', type=int, default=1000, help='Number of batch iterations')
     parser.add_argument('--weight_decay', type=int, default=None, help="Wegiht Decay")
 
+
     OBJECT_TO_MATERIAL = {
+
         "no_object": "none",
         "cardboard_box": "paper_cardboard",
         "speaker": "plastic",
@@ -192,10 +217,18 @@ if __name__ == '__main__':
         if f.is_dir() and (f / "metadata.json").exists()
     ])
 
-    all_distances = [
-        json.load(open(f / "metadata.json"))["occlusion_distance"]
-        for f in original_folders
-    ]
+    all_distances = []
+
+    for f in original_folders:
+        with open(f / "metadata.json", "r") as file:
+            meta = json.load(file)
+
+        total_distance = (
+            meta["occlusion_distance"] +
+            meta["object_distance"]
+        )
+
+        all_distances.append(total_distance)
 
     MAX_DIST = max(all_distances)
     print(f"Max occlusion distance: {MAX_DIST}m")
@@ -210,13 +243,32 @@ if __name__ == '__main__':
 
     labels = [temp_dataset[i][2].item() for i in range(len(temp_dataset))]
 
+    processed_root = Path("./data/processed")
+    object_groups = get_object_groups(processed_root)
+    
+    train_folders = []
+    val_folders = []
+
+
+    for obj, folders in object_groups.items():
+
+        train_obj, val_obj = train_test_split(
+            folders,
+            test_size=0.15,
+            random_state=42
+        )
+
+        train_folders.extend(train_obj)
+        val_folders.extend(val_obj)
+
+
     # Split ORIGINAL recordings first
-    train_folders, val_folders = train_test_split(
-        original_folders,
-        test_size=0.15,
-        stratify=labels,
-        random_state=42
-    )
+    # train_folders, val_folders = train_test_split(
+    #     original_folders,
+    #     test_size=0.2,
+    #     stratify=labels,
+    #     random_state=42
+    # )
 
     # Add augmentations ONLY to training set
     train_full = []
@@ -230,6 +282,27 @@ if __name__ == '__main__':
 
     # Validation remains ORIGINAL ONLY
     val_full = val_folders
+
+    augmentations = {
+        "noise": add_white_noise,
+        "shift": random_time_shift,
+        "scale": amplitude_scaling,
+        "bandpass": random_bandpass,
+        "eq": random_eq,
+        "dropout": random_dropout
+    }
+
+
+    for folder in train_folders:
+        for name, fn in augmentations.items():
+            aug_folder = augmented_root / f"{name}_{folder.name}"
+            if not aug_folder.exists():
+                save_augmented(
+                    folder,
+                    aug_folder,
+                    fn,
+                    name
+                )
 
     train_dataset = ImpulseData(
         train_full,
@@ -302,6 +375,7 @@ if __name__ == '__main__':
 
     best_val_loss   = float('inf')
     early_stop_cnt  = 0
+    best_score = -float("inf")
 
     for epoch in range(EPOCHS):
 
@@ -406,6 +480,7 @@ if __name__ == '__main__':
         #         print(f"Early stopping at epoch {epoch+1}")
         #         break
 
-    torch.save(model.state_dict(), model_run_dir / "final_model.pth")
-    model.load_state_dict(torch.load(model_run_dir / "best_model.pth"))
+    torch.save(model.state_dict(), model_run_dir / "damp_final.pth")
+    model.load_state_dict(torch.load(model_run_dir / "damp_best.pth"))
+
     run_evaluation(model, val_loader, DEVICE, OBJ_CLASSES, MAT_CLASSES, result_run_dir)

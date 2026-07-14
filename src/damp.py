@@ -37,23 +37,26 @@ class DampNet(nn.Module):
         self.detection_head = nn.Sequential(
             nn.Linear(128, 64),
             nn.ReLU(),
-            nn.Dropout(0.1),
+            nn.Dropout2d(0.1),
             nn.Linear(64, num_det_classes)
         )
 
         self.material_head = nn.Sequential(
             nn.Linear(128, 64),
             nn.ReLU(),
-            nn.Dropout(0.1),
+            nn.Dropout2d(0.1),
             nn.Linear(64, num_mat_classes)
         )
 
         self.distance_head = nn.Sequential(
             nn.Linear(128, 64),
             nn.ReLU(),
-            nn.Dropout(0.1),
+            nn.Dropout2d(0.1),
             nn.Linear(64, 1)
         )
+
+        # Abalation Study - Remove a Layer is the output shit 
+        # Remove Cross Attetion see if performance changes
 
     def forward(self, ir_1d, spec_2d):
 
