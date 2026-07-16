@@ -8,11 +8,9 @@ import soundfile as sf
 from scipy.signal import fftconvolve, spectrogram as compute_spec
 from configs.config import PROJECT
 
-
 AUDIO_DATA_ROOT = ""
 EXCITATION_PATH = ""
 SAVE_ROOT = ""
-
 START_SAMPLE = 4900
 END_SAMPLE = 6000
 FS = 16000
@@ -25,7 +23,9 @@ def parse_dist(s):
         return 0.0
 
 def build_metadata_from_paths(audio_data_root):
+    
     records = []
+
     for room in sorted(os.listdir(audio_data_root)):
         room_path = os.path.join(audio_data_root, room)
         if not os.path.isdir(room_path):
@@ -161,8 +161,11 @@ def print_summary(records):
  
     print(f"\nTotal: {len(records)} recordings\n")
  
-if __name__ == "__main__":
+def run_extraction(AUDIO_DATA_ROOT, EXCITATION_PATH, PROCESSED_ROOT, skip_if_exists=False):
 
+    if skip_if_exists == True:
+        return
+    
     project = PROJECT
 
     AUDIO_DATA_ROOT = "/home/3/um07293/data/audio"
@@ -186,4 +189,3 @@ if __name__ == "__main__":
         )
  
     print("\nDone. All files processed.")
- 

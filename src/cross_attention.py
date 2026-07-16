@@ -2,7 +2,6 @@ import torch
 from torch import nn
 
 class CrossBranchAttention(nn.Module):
-
     def __init__(self, dim=128, num_heads=8, dropout=0.1):
 
         super().__init__()
@@ -45,20 +44,18 @@ class CrossBranchAttention(nn.Module):
     def forward(self, temporal_feat, spec_feat):
 
         t = temporal_feat.transpose(1, 2)                         
-
+        
         B, C, H, W = spec_feat.shape
+
         s = spec_feat.view(B, C, H * W).transpose(1, 2)          
- 
         t_attn, _ = self.t_to_s(query=t, key=s, value=s)
-        t = self.temporal_norm(t + t_attn)                         
+
+        t = self.temporal_norm(t + t_attn)  
         t = self.temporal_norm2(t + self.temporal_ffn(t))          
- 
+
         s_attn, _ = self.s_to_t(query=s, key=t, value=t)
-        s = self.spectral_norm(s + s_attn)                        
+        s = self.spectral_norm(s + s_attn)                  
+        
         s = self.spectral_norm2(s + self.spectral_ffn(s))         
- 
-        return t, s  
 
-
-    
-     
+        return t, s

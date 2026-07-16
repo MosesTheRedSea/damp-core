@@ -7,7 +7,7 @@ name = "acoustic-object-detection"
 version = "0.1.0"
 description = "occluded acoustic object detection"
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.11,<3.12"
 license = { text = "MIT" }
 authors = [
     { name = "Moses Adewolu", email = "MosesOluwatobiAdewolu@gmail.com" }

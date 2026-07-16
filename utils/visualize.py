@@ -142,12 +142,16 @@ def plot_accuracy_curve(accuracies, labels=None, save_path=None):
         plt.show()
 
 def plot_rmse_curve(rmse_dict, save_path=None):
+    
     plt.figure()
+
     for label, values in rmse_dict.items():
         plt.plot(values, label=label)
+
     plt.title("Regression RMSE over Epochs")
     plt.xlabel("Epoch")
     plt.ylabel("RMSE")
+
     plt.legend()
     plt.grid(True)
     plt.tight_layout()
