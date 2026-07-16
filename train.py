@@ -90,8 +90,9 @@ class MultiTaskLoss(nn.Module):
 
     def forward(self, p_det, t_det, p_dist, t_dist, p_mat, t_mat, ortho_loss=None):
 
-        loss_det  = F.cross_entropy(p_det, t_det)
-        loss_mat  = F.cross_entropy(p_mat, t_mat)
+        loss_det = F.cross_entropy(p_det, t_det, label_smoothing=0.1)
+        loss_mat = F.cross_entropy(p_mat, t_mat, label_smoothing=0.1)
+
         loss_dist = F.l1_loss(p_dist.squeeze(-1), t_dist)
 
         # Normalise each loss to roughly [0, 1]
@@ -363,8 +364,8 @@ if __name__ == '__main__':
         obj_to_mat=OBJECT_TO_MATERIAL
     )
 
-    train_loader = DataLoader(train_dataset, batch_size=65, shuffle=True)
-    val_loader   = DataLoader(val_dataset,   batch_size=64, shuffle=False)
+    train_loader = DataLoader(train_dataset, batch_size=128, shuffle=True)
+    val_loader   = DataLoader(val_dataset,   batch_size=128, shuffle=False)
 
     print(f"Original recordings:              {len(original_folders)}")
     print(f"Training originals:               {len(train_folders)}")
@@ -374,7 +375,7 @@ if __name__ == '__main__':
 
     EPOCHS       = 100
     LR           = 1e-3
-    WEIGHT_DECAY = 1e-4
+    WEIGHT_DECAY = 5e-4
     DEVICE       = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     PATIENCE     = 25
 
@@ -559,12 +560,11 @@ if __name__ == '__main__':
             best_val_loss  = smoothed_val
             early_stop_cnt = 0
             torch.save(model.state_dict(), model_run_dir / "best_model.pth")
-
-        # else:
-        #     early_stop_cnt += 1
-        #     if early_stop_cnt >= PATIENCE:
-        #         print(f"Early stopping at epoch {epoch+1}")
-        #         break
+        else:
+            early_stop_cnt += 1
+            if early_stop_cnt >= PATIENCE:
+                print(f"Early stopping at epoch {epoch+1}")
+                break
 
     torch.save(model.state_dict(), model_run_dir / "damp_final.pth")
     model.load_state_dict(torch.load(model_run_dir / "damp_final.pth"))
