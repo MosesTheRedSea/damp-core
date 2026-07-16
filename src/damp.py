@@ -33,21 +33,21 @@ class DampNet(nn.Module):
         self.detection_head = nn.Sequential(
             nn.Linear(128, 64),
             nn.ReLU(),
-            nn.Dropout2d(0.1),
+            nn.Dropout(0.3),
             nn.Linear(64, num_det_classes)
         )
 
         self.material_head = nn.Sequential(
             nn.Linear(128, 64),
             nn.ReLU(),
-            nn.Dropout2d(0.1),
+            nn.Dropout(0.3),
             nn.Linear(64, num_mat_classes)
         )
 
         self.distance_head = nn.Sequential(
             nn.Linear(128, 64),
             nn.ReLU(),
-            nn.Dropout2d(0.1),
+            nn.Dropout(0.3),
             nn.Linear(64, 1)
         )
 
@@ -66,8 +66,8 @@ class DampNet(nn.Module):
         semantic  = self.semantic_proj(s_embed)  
         geometric = self.geometric_proj(t_embed) 
 
-        self._semantic  = semantic
-        self._geometric = geometric
+        self.semantic  = semantic
+        self.geometric = geometric
  
         det_out  = self.detection_head(semantic)
         mat_out  = self.material_head(semantic)
