@@ -4,6 +4,7 @@ PROJECT = "/home/3/um07293/research/occul-net"
 
 LOSS = 1e-4 
 EPOCHS = 100
+FORCE_REGENERATE = False
 
 TRAIN_MATERIAL = {  
     "none",

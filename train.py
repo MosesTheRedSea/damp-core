@@ -21,6 +21,7 @@ from utils.utils import epoch_metrics
 from utils.utils import run_evaluation
 from collections import defaultdict
 
+
 from data.augment import (
     add_white_noise,
     random_time_shift,
@@ -127,11 +128,17 @@ if __name__ == '__main__':
     parser.add_argument('--batch_size', type=int, default=32, help='Size of batches')
     parser.add_argument('--num_epochs', type=int, default=1000, help='Number of batch iterations')
     parser.add_argument('--weight_decay', type=int, default=None, help="Wegiht Decay")
+    parser.add_argument("--regen" ,help="Regenerate augmentations even if they already exist.")
+    parser.add_argument("--augment",help="Do not augment original training data")
+
+
 
     project = PROJECT
 
     AUDIO_DATA_ROOT = "/home/3/um07293/data/audio"
     EXCITATION_PATH = Path(f'{project}/excitation.wav')
+
+    FORCE_AUGMENT = args.augment
 
     PROCESSED_ROOT = Path("./data/processed")
     AUGMENTED_ROOT = Path("./data/augmented")
@@ -204,7 +211,7 @@ if __name__ == '__main__':
 
     run_extraction(
         AUDIO_DATA_ROOT, EXCITATION_PATH, PROCESSED_ROOT,
-        skip_if_exists=False,  # won't redo work if already processed
+        skip_if_exists=True,  # won't redo work if already processed
     )
 
     # print(MAT_CLASSES)
@@ -283,47 +290,55 @@ if __name__ == '__main__':
         train_folders.extend(train)
         val_folders.extend(val)
 
-    print(f"\nGenerating augmentations for {len(train_folders)} training recordings...")
- 
-    augmentations = {
-        "noise": add_white_noise,
-        "shift": random_time_shift,
-        "scale": amplitude_scaling,
-        "bandpass": random_bandpass,
-        "eq": random_eq,
-        "dropout": random_dropout,
-    }
 
-    for source_folder in train_folders:
+    if FORCE_AUGMENT:
 
-        for aug_name, aug_fn in augmentations.items():
+        print(f"\nGenerating augmentations for {len(train_folders)} training recordings...")
+    
+        augmentations = {
+            "noise": add_white_noise,
+            "shift": random_time_shift,
+            "scale": amplitude_scaling,
+            "bandpass": random_bandpass,
+            "eq": random_eq,
+            "dropout": random_dropout,
+        }
 
-            output_folder = AUGMENTED_ROOT / f"{aug_name}_{source_folder.name}"
+        for source_folder in train_folders:
 
-            # Don't regenerate augmentations that already exist
-            if (output_folder / "metadata.json").exists():
-                continue
+            for aug_name, aug_fn in augmentations.items():
 
-            save_augmented(
-                source_folder,
-                output_folder,
-                aug_fn,
-                aug_name,
-            )
+                output_folder = AUGMENTED_ROOT / f"{aug_name}_{source_folder.name}"
 
-    # Add augmentations to training set only
-    train_full = []
+                # Don't regenerate augmentations that already exist
+                if (output_folder / "metadata.json").exists():
+                    continue
 
-    for folder in train_folders:
-        # Keep the original recording
-        train_full.append(folder)
+                save_augmented(
+                    source_folder,
+                    output_folder,
+                    aug_fn,
+                    aug_name,
+                    FORCE_AUGMENT
+                )
 
-        # Add every augmented version
-        for aug in AUGMENTATIONS:
-            aug_folder = AUGMENTED_ROOT / f"{aug}_{folder.name}"
+        # Add augmentations to training set only
+        train_full = []
 
-            if aug_folder.exists():
-                train_full.append(aug_folder)
+        for folder in train_folders:
+            # Keep the original recording
+            train_full.append(folder)
+
+            # Add every augmented version
+            for aug in AUGMENTATIONS:
+                aug_folder = AUGMENTED_ROOT / f"{aug}_{folder.name}"
+
+                if aug_folder.exists():
+                    train_full.append(aug_folder)
+    else:
+
+        print("\nTraining without augmentations.")
+        train_full = train_folders.copy()
 
     # Validation contains originals only
     val_full = val_folders
