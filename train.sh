@@ -12,4 +12,4 @@ module load cuda/12.1
 source /home/3/um07293/research/occul-net/.venv/bin/activate
 cd /home/3/um07293/research/occul-net
 
-python train.py --augment False --regen False
+python train.py

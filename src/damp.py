@@ -66,8 +66,8 @@ class DampNet(nn.Module):
         semantic  = self.semantic_proj(s_embed)  
         geometric = self.geometric_proj(t_embed) 
 
-        self.semantic  = semantic
-        self.geometric = geometric
+        self._semantic  = semantic
+        self._geometric = geometric
  
         det_out  = self.detection_head(semantic)
         mat_out  = self.material_head(semantic)
@@ -77,10 +77,10 @@ class DampNet(nn.Module):
 
     @property
     def orthogonality_loss(self):
-        if not hasattr(self, 'semantic'):
+        if not hasattr(self, '_semantic'):
             return torch.tensor(0.0, device=next(self.parameters()).device)
-        s = nn.functional.normalize(self.semantic,  dim=1)
-        g = nn.functional.normalize(self.geometric, dim=1)
+        s = nn.functional.normalize(self._semantic,  dim=1)
+        g = nn.functional.normalize(self._geometric, dim=1)
         cos_sim = (s * g).sum(dim=1)
         return cos_sim.pow(2).mean()
  

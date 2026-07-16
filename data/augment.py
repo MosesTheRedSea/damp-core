@@ -103,46 +103,49 @@ def compute_spectro(ir):
  
 #     print(f"  [{aug_name}] → {output_folder.name}")
 
-def save_augmented(source_folder, output_folder, aug_fn, aug_name, FORCE_AUGMENT):
+def save_augmented(source_folder, output_folder, aug_fn, aug_name, FORCE_REGEN=False):
 
-    # Skip if already processed
-    if not FORCE_AUGMENT:
-        expected_files = [
-            output_folder / "metadata.json",
-            output_folder / "ir_mic_16.npy",
-            output_folder / "spec_mic_16.npy",
-        ]
-
-        if all(f.exists() for f in expected_files):
-            print(f"  [{aug_name}] Skipping {output_folder.name}")
-            return
+    if output_folder.exists() and FORCE_REGEN:
+        import shutil
+        shutil.rmtree(output_folder)
 
     os.makedirs(output_folder, exist_ok=True)
 
     for ch in range(1, NUM_CHANNELS + 1):
+
         ir_path = source_folder / f"ir_mic_{ch}.npy"
+
         if not ir_path.exists():
             continue
 
         ir = np.load(ir_path)
+
         ir_aug = aug_fn(ir)
-        Sxx = compute_spectrogram(ir_aug)
 
-        np.save(output_folder / f"ir_mic_{ch}.npy", ir_aug)
-        np.save(output_folder / f"spec_mic_{ch}.npy", Sxx)
+        Sxx = compute_spectro(ir_aug)
 
-    src_meta = source_folder / "metadata.json"
-    if src_meta.exists():
-        with open(src_meta) as f:
-            meta = json.load(f)
+        np.save(
+            output_folder / f"ir_mic_{ch}.npy",
+            ir_aug
+        )
 
-        meta["augmentation"] = aug_name
+        np.save(
+            output_folder / f"spec_mic_{ch}.npy",
+            Sxx
+        )
 
-        with open(output_folder / "metadata.json", "w") as f:
-            json.dump(meta, f, indent=2)
+        src_meta = source_folder / "metadata.json"
+        if src_meta.exists():
+            with open(src_meta) as f:
+                meta = json.load(f)
 
-    print(f"  [{aug_name}] → {output_folder.name}")
- 
+            meta["augmentation"] = aug_name
+
+            with open(output_folder / "metadata.json", "w") as f:
+                json.dump(meta, f, indent=2)
+
+        print(f"  [{aug_name}] → {output_folder.name}")
+
 
 if __name__ == "__main__":
 
