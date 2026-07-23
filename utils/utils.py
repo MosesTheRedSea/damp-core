@@ -43,6 +43,10 @@ def compute_spectrogram(ir, fs, nperseg=256, noverlap=128):
     _, _, Sxx = compute_spec(ir, fs=fs, nperseg=nperseg, noverlap=noverlap)
     return Sxx
 
+def convert_pth_to_pt():
+    weights = torch.load('damp.pth', map_location='cpu')
+    torch.save(weights, 'damp.pt')
+
 def run_evaluation(model, loader, device, det_classes, mat_classes, save_dir, history=None):
 
     model.eval()

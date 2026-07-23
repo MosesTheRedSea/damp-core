@@ -21,6 +21,7 @@ class CrossBranchAttention(nn.Module):
         )
  
         self.temporal_norm = nn.LayerNorm(dim)
+
         self.spectral_norm = nn.LayerNorm(dim)
 
         self.temporal_ffn = nn.Sequential(
@@ -43,19 +44,28 @@ class CrossBranchAttention(nn.Module):
 
     def forward(self, temporal_feat, spec_feat):
 
-        t = temporal_feat.transpose(1, 2)                         
-        
+        # (Batch, SequenceLength, Features)
+        # temporal_feat = # (Batch, 128 channels, 1100 samples)
+        t = temporal_feat.transpose(1, 2) 
+
+        # t = (Batch, 1100, 128)
+        # spec_feat = (Batch, 128 channels, Height, Width)
         B, C, H, W = spec_feat.shape
 
-        s = spec_feat.view(B, C, H * W).transpose(1, 2)          
+        s = spec_feat.view(B, C, H * W).transpose(1, 2)
+
+        # (Batch, Height * Width, 128)
+        # both attentions computed from the ORIGINAL t/s, not a chain
         t_attn, _ = self.t_to_s(query=t, key=s, value=s)
 
-        t = self.temporal_norm(t + t_attn)  
-        t = self.temporal_norm2(t + self.temporal_ffn(t))          
+        # for this specific microphone sample at time step X which frequency spot in the spectrogram (key) matter
 
         s_attn, _ = self.s_to_t(query=s, key=t, value=t)
-        s = self.spectral_norm(s + s_attn)                  
-        
-        s = self.spectral_norm2(s + self.spectral_ffn(s))         
+
+        t = self.temporal_norm(t + t_attn)
+        t = self.temporal_norm2(t + self.temporal_ffn(t))
+
+        s = self.spectral_norm(s + s_attn)
+        s = self.spectral_norm2(s + self.spectral_ffn(s))
 
         return t, s

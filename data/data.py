@@ -6,7 +6,6 @@ from pathlib import Path
 import numpy as np
 import soundfile as sf
 from scipy.signal import fftconvolve, spectrogram as compute_spec
-from configs.config import PROJECT
 
 AUDIO_DATA_ROOT = ""
 EXCITATION_PATH = ""
@@ -166,7 +165,7 @@ def run_extraction(AUDIO_DATA_ROOT, EXCITATION_PATH, PROCESSED_ROOT, skip_if_exi
     if skip_if_exists == True:
         return
     
-    project = PROJECT
+    project = "/home/3/um07293/research/occul-net"
 
     AUDIO_DATA_ROOT = "/home/3/um07293/data/audio"
     EXCITATION_PATH = f'{project}/excitation.wav'

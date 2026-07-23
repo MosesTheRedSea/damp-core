@@ -11,11 +11,13 @@ class DampNet(nn.Module):
         super().__init__()
 
         self.temporal_branch = Temporal()
+
         self.spectral_branch = Spectral()
 
         self.cross_attn = CrossBranchAttention(dim=128, num_heads=8)
 
         self.temporal_pool = nn.Linear(128, 1)
+
         self.spectral_pool = nn.Linear(128, 1)
  
         self.semantic_proj = nn.Sequential(  
@@ -26,6 +28,12 @@ class DampNet(nn.Module):
 
         self.geometric_proj = nn.Sequential( 
             nn.Linear(128, 128),
+            nn.LayerNorm(128),
+            nn.ReLU()
+        )
+
+        self.detection_fuse = nn.Sequential(
+            nn.Linear(128 * 2, 128),
             nn.LayerNorm(128),
             nn.ReLU()
         )
@@ -57,6 +65,7 @@ class DampNet(nn.Module):
         s_feat = self.spectral_branch(spec_2d)  
  
         t_attn, s_attn = self.cross_attn(t_feat, s_feat)
+
         t_weights = torch.softmax(self.temporal_pool(t_attn), dim=1)   
         t_embed = (t_attn * t_weights).sum(dim=1)                     
 
@@ -66,21 +75,12 @@ class DampNet(nn.Module):
         semantic  = self.semantic_proj(s_embed)  
         geometric = self.geometric_proj(t_embed) 
 
-        self._semantic  = semantic
-        self._geometric = geometric
- 
-        det_out  = self.detection_head(semantic)
+        fused    = self.detection_fuse(torch.cat([semantic, geometric], dim=1))
+        det_out  = self.detection_head(fused)
+
         mat_out  = self.material_head(semantic)
         dist_out = self.distance_head(geometric)
- 
-        return det_out, dist_out, mat_out
 
-    @property
-    def orthogonality_loss(self):
-        if not hasattr(self, '_semantic'):
-            return torch.tensor(0.0, device=next(self.parameters()).device)
-        s = nn.functional.normalize(self._semantic,  dim=1)
-        g = nn.functional.normalize(self._geometric, dim=1)
-        cos_sim = (s * g).sum(dim=1)
-        return cos_sim.pow(2).mean()
+        return det_out, dist_out, mat_out, semantic, geometric
+
  

@@ -2,57 +2,76 @@ import torch
 from torch import nn
 
 class Spectral(nn.Module):
-    def __init__(self, input_channels=16, output_features=128):
 
+    # Spectrograms provide a visual snapshot of sound
+    # time x frequency - amplitude is color intensity
+    # pitch changes, harmonics, transient bursts, and rhythm
+
+    # 2D Convolutions convert 1D audio into images AI recognition
+
+    def __init__(self, input_channels=16, output_features=128):
+        
+        # (batch_size, 16, H, W)
         super(Spectral, self).__init__()
         
+        # Conv2d 
         self.skip = nn.Conv2d(96, 128, kernel_size=1)
-
+        
+        # Multi-Scale Convolutions different filers
         self.conv3 = nn.Sequential(
-            nn.Conv2d(input_channels, 32, 3, padding=1),
+            # (16, 32, 3=kernel_size, padding=1)
+            nn.Conv2d(input_channels, 32, kernel_size=3, padding=1),
             nn.BatchNorm2d(32),
             nn.ReLU()
         )
 
         self.conv5 = nn.Sequential(
-            nn.Conv2d(input_channels,32,5,padding=2),
+            # (16, 32, 5=kernel_size, padding=2)
+            nn.Conv2d(input_channels, 32, kernel_size=5, padding=2),
             nn.BatchNorm2d(32),
             nn.ReLU()
         )
 
         self.conv7 = nn.Sequential(
-            nn.Conv2d(input_channels,32,7,padding=3),
+            # (16, 32, 7=kernel_size, padding=3)
+            nn.Conv2d(input_channels, 32, kernel_size=7, padding=3),
             nn.BatchNorm2d(32),
             nn.ReLU()
-        )
-        
+        )   
+
+
         self.conv_block = nn.Sequential(
+            # (96, 128, 3=kernel_size, padding=1)
             nn.Conv2d(96,128,3,padding=1),
             nn.BatchNorm2d(128),
             nn.ReLU()
         )
 
+
         self.se = nn.Sequential(
             nn.AdaptiveAvgPool2d(1),
-            nn.Conv2d(128,8,1),
+            nn.Conv2d(128,8, kernel_size=1),
             nn.ReLU(),
-            nn.Conv2d(8,128,1),
+            nn.Conv2d(8,128, kernel_size=1),
             nn.Sigmoid()
         )
-  
-    def forward(self, x):
 
-        x1 = self.conv3(x)
-        x2 = self.conv5(x)
-        x3 = self.conv7(x)
+    def forward(self, input):
 
-        x = torch.cat([x1, x2, x3], dim=1)
-        
-        residual = self.skip(x)
+        # Grab Features via Convolutions different kernel sizes
+        feat_1 = self.conv3(input)
+        feat_2 = self.conv5(input)
+        feat_3 = self.conv7(input)
 
-        x = self.conv_block(x)
-        x = x + residual
-        x = x * self.se(x)
-        x = torch.relu(x)
+        # Concat features together
+        total_feat = torch.cat([feat_1, feat_2, feat_3], dim=1)
 
-        return x 
+        # 1 x 1 2D Convolution to upscale
+        residual = self.skip(total_feat)
+
+        output = self.conv_block(total_feat)
+        output = output + residual
+        output = torch.relu(output)
+        output = output * self.se(output)
+
+        return output 

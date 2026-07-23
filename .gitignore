@@ -5,9 +5,7 @@ data/raw/
 /uv.lock
 
 example.txt
-<<<<<<< HEAD
 *.pth
-=======
 
 # Python cache
 __pycache__/
@@ -43,4 +41,3 @@ Thumbs.db
 # IDEs
 .vscode/
 .idea/
->>>>>>> 1963e4d033d57bcb93f682b1c4289f4497b8a0e1

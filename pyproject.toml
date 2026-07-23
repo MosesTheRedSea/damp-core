@@ -9,6 +9,7 @@ description = "occluded acoustic object detection"
 readme = "README.md"
 requires-python = ">=3.11,<3.12"
 license = { text = "MIT" }
+
 authors = [
     { name = "Moses Adewolu", email = "MosesOluwatobiAdewolu@gmail.com" }
 ]

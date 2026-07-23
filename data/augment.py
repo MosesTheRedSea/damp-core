@@ -149,7 +149,7 @@ def save_augmented(source_folder, output_folder, aug_fn, aug_name, FORCE_REGEN=F
 
 if __name__ == "__main__":
 
-    project = PROJECT
+    project = "/home/3/um07293/research/occul-net"
 
     PROCESSED_DATA_ROOT = Path(f'{Path(__file__).parent}/processed')
     EXCITATION_PATH = Path(f'{project}/excitation.wav')

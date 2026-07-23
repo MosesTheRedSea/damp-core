@@ -23,6 +23,7 @@ from collections import defaultdict
 
 
 from data.augment import (
+
     add_white_noise,
     random_time_shift,
     amplitude_scaling,
@@ -30,10 +31,10 @@ from data.augment import (
     random_eq,
     random_dropout,
     save_augmented
+
 )
 
 from data.data import run_extraction
-from configs.config import PROJECT
 
 
 class ImpulseData(Dataset):
@@ -436,10 +437,13 @@ if __name__ == '__main__':
         train_losses, train_det, train_dist, train_mat = [], [], [], []
 
         for ir, spec, t_det, t_dist, t_mat in train_loader:
+
             ir, spec       = ir.to(DEVICE), spec.to(DEVICE)
+
             t_det, t_dist, t_mat = t_det.to(DEVICE), t_dist.to(DEVICE), t_mat.to(DEVICE)
 
             optimizer.zero_grad()
+
             p_det, p_dist, p_mat = model(ir, spec)
 
             loss, (l_det, l_dist, l_mat) = criterion(
