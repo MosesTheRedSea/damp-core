@@ -20,21 +20,19 @@ from utils.utils import get_next_run_folder
 from utils.utils import epoch_metrics
 from utils.utils import run_evaluation
 from collections import defaultdict
-
+from data.data import run_extraction
 
 from data.augment import (
-
-    add_white_noise,
-    random_time_shift,
-    amplitude_scaling,
-    random_bandpass,
-    random_eq,
-    random_dropout,
+    random_polarity_flip,
+    interchannel_delay,
+    random_decay_scaling,
+    random_room_augment,
+    colored_noise,
+    channel_dropout,
+    distance_jitter,
+    spec_augment,
     save_augmented
-
 )
-
-from data.data import run_extraction
 
 
 class ImpulseData(Dataset):
@@ -75,9 +73,10 @@ class ImpulseData(Dataset):
 
         return ir_tensor, spec_tensor, t_det, t_dist, t_mat
 
-
 class MultiTaskLoss(nn.Module):
-    def __init__(self, w_det=1.0, w_dist=1.0, w_mat=1.0, ortho_lambda=0.01, num_det_classes=8, num_mat_classes=5, max_dist=1.5):
+
+    def __init__(self, w_det=1.0, w_dist=1.0, w_mat=1.0, 
+                ortho_lambda=0.01, num_det_classes=8, num_mat_classes=5, max_dist=1.5):
 
         super().__init__()
 
@@ -112,7 +111,6 @@ class MultiTaskLoss(nn.Module):
 
         return total, (loss_det_norm.item(), loss_dist_norm.item(), loss_mat_norm.item())
 
-
 def get_object_groups(folders):
     groups = defaultdict(list)
     for folder in folders:
@@ -130,61 +128,55 @@ if __name__ == '__main__':
     parser.add_argument('--batch_size', type=int, default=32, help='Size of batches')
     parser.add_argument('--num_epochs', type=int, default=1000, help='Number of batch iterations')
     parser.add_argument('--weight_decay', type=int, default=None, help="Wegiht Decay")
-
-    parser.add_argument(
-        "--augment",
-        action="store_true",
-        help="Use augmented training data"
-    )
-
-    parser.add_argument(
-        "--regen",
-        action="store_true",
-        help="Regenerate augmentations"
-    )
+    parser.add_argument("--augment", action="store_true", help="Use augmented training data")
+    parser.add_argument("--regen", action="store_true", help="Regenerate augmentations")
     
     args = parser.parse_args()
 
-    project = PROJECT
-
     AUDIO_DATA_ROOT = "/home/3/um07293/data/audio"
-    EXCITATION_PATH = Path(f'{project}/excitation.wav')
-
+    EXCITATION_PATH = Path('/home/3/um07293/research/occul-net/excitation.wav')
     FORCE_AUGMENT = args.augment
     FORCE_REGEN = args.regen
-
     PROCESSED_ROOT = Path("./data/processed")
     AUGMENTED_ROOT = Path("./data/augmented")
+    AUGMENTATIONS = ["polarity", "delay", "scale", "room", "noise", "dropout", "jitter", "spec_aug"]
 
-    AUGMENTATIONS = ["noise", "shift", "scale", "bandpass", "eq", "dropout"]
-
+    # 25 Objects -> 6 Indvidual Classes
     OBJECT_TO_MATERIAL = {
 
         "no_object": "none",
-        "cardboard_box": "paper_cardboard",
-        "speaker": "plastic",
+
+        "cardboard_box_large": "paper_cardboard",
+        "cardboard_box_small": "paper_cardboard",
+        "hardcover_textbook": "paper_cardboard",
+        "printer_paper": "paper_cardboard",
+        
         "pot": "metal",
         "strainer": "metal",
         "pitcher": "metal",
         "ladder": "metal",
+        "metal_cup": "metal",
+
         "ceramic_mug": "ceramic",
-        "glass_mug": "glass",
         "plate": "ceramic",
         "ceramic_bowl": "ceramic",
+        "teapot": "ceramic",
+
         "trash_bin": "plastic",
-        "metal_cup": "metal",
         "plastic_bottle": "plastic",
         "plastic_bowl": "plastic",
         "plastic_container": "plastic",
         "plastic_sport": "plastic",
         "plastic_shaker": "plastic",
         "monitor":"plastic",
-        "teapot": "ceramic",
+        "speaker": "plastic",
+
         "glass_vodka": "glass", 
-        "glass_shooter": "glass"
+        "glass_shooter": "glass",
+        "glass_mug": "glass"
     }
 
-    
+    # 25 Individual Objects
     OBJ_CLASSES = [
         "no_object",
         "cardboard_box",
@@ -207,9 +199,13 @@ if __name__ == '__main__':
         "monitor",
         "teapot",
         "glass_vodka", 
-        "glass_shooter"
+        "glass_shooter",
+        "cardboard_box_small",
+        "hardcover_textbook",
+        "printer_paper"
     ]
 
+    # 6 Material Classes
     MAT_CLASSES = [
         "none",
         "paper_cardboard",
@@ -227,13 +223,12 @@ if __name__ == '__main__':
         skip_if_exists=True,  # won't redo work if already processed
     )
 
-
     original_folders = sorted([
         f for f in PROCESSED_ROOT.iterdir()
         if f.is_dir() and (f / "metadata.json").exists()
     ])
 
-    print(f"Found {len(original_folders)} processed recordings.")
+    print(f"Found {len(original_folders)} processed recordings...")
 
     all_distances = []
 
@@ -283,21 +278,19 @@ if __name__ == '__main__':
         print(f"\nGenerating augmentations for {len(train_folders)} training recordings...")
     
         augmentations = {
-            "noise": add_white_noise,
-            "shift": random_time_shift,
-            "scale": amplitude_scaling,
-            "bandpass": random_bandpass,
-            "eq": random_eq,
-            "dropout": random_dropout,
+            "polarity": random_polarity_flip,
+            "delay": interchannel_delay,
+            "scale": random_decay_scaling,
+            "room": random_room_augment,
+            "noise": colored_noise,
+            "dropout": channel_dropout,
+            "jitter": distance_jitter,
+            "spec_aug": spec_augment,
         }
 
         for source_folder in train_folders:
-
             for aug_name, aug_fn in augmentations.items():
-
                 output_folder = AUGMENTED_ROOT / f"{aug_name}_{source_folder.name}"
-
-                # Don't regenerate augmentations that already exist
                 if (output_folder / "metadata.json").exists() and not FORCE_REGEN:
                     continue
 
@@ -310,7 +303,6 @@ if __name__ == '__main__':
                 )
 
         # Add augmentations to training set only
-
         for folder in train_folders:
             # Keep the original recording
             train_full.append(folder)
@@ -321,6 +313,9 @@ if __name__ == '__main__':
 
                 if aug_folder.exists():
                     train_full.append(aug_folder)
+        
+        print(f"\nDone. {len(train_folders) * len(augmentations)} augmented recordings saved to {AUGMENTED_ROOT}")
+    
     else:
 
         print("\nTraining without augmentations.")
@@ -329,11 +324,12 @@ if __name__ == '__main__':
     # Validation contains originals only
     val_full = val_folders
 
-    print(f"Original recordings:           {len(original_folders)}")
-    print(f"Training originals:            {len(train_folders)}")
-    print(f"Validation originals:          {len(val_folders)}")
-    print(f"Training samples (+aug):       {len(train_full)}")
-    print(f"Augmented samples added:       {len(train_full) - len(train_folders)}")
+    print(f"Original recordings: {len(original_folders)}")
+    print(f"Training originals: {len(train_folders)}")
+    print(f"Validation originals: {len(val_folders)}")
+
+    print(f"Training samples (+aug): {len(train_full)}")
+    print(f"Augmented samples added: {len(train_full) - len(train_folders)}")
 
     train_dataset = ImpulseData(
         train_full,
@@ -352,18 +348,18 @@ if __name__ == '__main__':
     train_loader = DataLoader(train_dataset, batch_size=128, shuffle=True)
     val_loader   = DataLoader(val_dataset,   batch_size=128, shuffle=False)
 
-    print(f"Original recordings:              {len(original_folders)}")
-    print(f"Training originals:               {len(train_folders)}")
-    print(f"Validation originals:             {len(val_folders)}")
-    print(f"Training samples (w/ augment):    {len(train_full)}")
-    print(f"Augmented samples added:          {len(train_full) - len(train_folders)}")
+    print(f"Original recordings: {len(original_folders)}")
+    print(f"Training originals: {len(train_folders)}")
+    print(f"Validation originals: {len(val_folders)}")
 
-    EPOCHS       = 100
-    LR           = 1e-3
+    print(f"Training samples (w/ augment): {len(train_full)}")
+    print(f"Augmented samples added: {len(train_full) - len(train_folders)}")
+
+    EPOCHS = 100
+    LR = 1e-3
     WEIGHT_DECAY = 5e-4
-    DEVICE       = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    PATIENCE     = 25
-
+    DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    PATIENCE = 25
     VAL_SMOOTH = 0.9
 
     model_run_dir  = get_next_run_folder("./models")
@@ -435,17 +431,14 @@ if __name__ == '__main__':
         model.train()
 
         train_losses, train_det, train_dist, train_mat = [], [], [], []
-
         for ir, spec, t_det, t_dist, t_mat in train_loader:
 
-            ir, spec       = ir.to(DEVICE), spec.to(DEVICE)
-
+            ir, spec  = ir.to(DEVICE), spec.to(DEVICE)
             t_det, t_dist, t_mat = t_det.to(DEVICE), t_dist.to(DEVICE), t_mat.to(DEVICE)
 
             optimizer.zero_grad()
 
             p_det, p_dist, p_mat = model(ir, spec)
-
             loss, (l_det, l_dist, l_mat) = criterion(
                 p_det, t_det,
                 p_dist, t_dist,
@@ -462,7 +455,6 @@ if __name__ == '__main__':
             train_dist.append(l_dist)
             train_mat.append(l_mat)
 
-        # ── Validation ────────────────────────────────────────────────────
         model.eval()
         val_losses, val_det, val_dist, val_mat = [], [], [], []
 
@@ -542,22 +534,20 @@ if __name__ == '__main__':
             f"LR: {scheduler.get_last_lr()[0]:.2e}"
         )
 
-        # Early stopping on val loss (stable — no log_vars involved)
-
         if smoothed_val < best_val_loss:
             best_val_loss  = smoothed_val
             early_stop_cnt = 0
-            torch.save(model.state_dict(), model_run_dir / "best_model.pth")
+            torch.save(model.state_dict(), model_run_dir / "damp_best.pth")
         else:
             early_stop_cnt += 1
             if early_stop_cnt >= PATIENCE:
                 print(f"Early stopping at epoch {epoch+1}")
                 break
 
-    torch.save(model.state_dict(), model_run_dir / "damp_final.pth")
-    model.load_state_dict(torch.load(model_run_dir / "damp_final.pth"))
+    torch.save(model.state_dict(), model_run_dir / "damp.pth")
+    model.load_state_dict(torch.load(model_run_dir / "damp.pth"))
 
     with open(result_run_dir / "training_history.json", "w") as f:
         json.dump(history, f, indent=4)
 
-    run_evaluation(model, val_loader, DEVICE, OBJ_CLASSES, MAT_CLASSES, result_run_dir, history)
+    run_evaluation(model, val_loader, DEVICE, result_run_dir, history)

@@ -65,7 +65,6 @@ def record_speaker_data(dataset_directory, room_directory, excitation_path, occl
         end_sample = 22000
         rir_cropped = rir[start_sample:end_sample]
 
-
         # start_sample = 21300
         # end_sample = 22000
         # rir_cropped = rir[start_sample:end_sample]
@@ -111,6 +110,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     record_speaker_data(
+
         dataset_directory=args.dataset_directory,
         room_directory=args.room_directory,
         excitation_path=args.excitation_path,
@@ -121,7 +121,8 @@ if __name__ == "__main__":
         base_filename=args.base_filename,
         channels=args.channels,
         repeat=args.repeat,
-        sleep_duration=args.sleep_duration,
+        sleep_duration=args.sleep_duration
+
     )
 
 
