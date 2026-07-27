@@ -56,7 +56,8 @@ def run_evaluation(model, loader, device, save_dir, history=None):
 
     OBJ_CLASSES = [
         "no_object",
-        "cardboard_box",
+        "cardboard_box_large",
+        "cardboard_box_small",
         "speaker",
         "pot",
         "strainer",
@@ -77,11 +78,11 @@ def run_evaluation(model, loader, device, save_dir, history=None):
         "teapot",
         "glass_vodka", 
         "glass_shooter",
-        "cardboard_box_small",
         "hardcover_textbook",
         "printer_paper"
     ]
 
+    # 6 Material Classes
     MAT_CLASSES = [
         "none",
         "paper_cardboard",
@@ -114,62 +115,143 @@ def run_evaluation(model, loader, device, save_dir, history=None):
     print(f"Distance MAE       : {mae_dist:.2f} m")
 
     print(classification_report(all_det_t, all_det_p, target_names=det_classes))
-
     print(classification_report(all_mat_t, all_mat_p, target_names=mat_classes))
 
     # Object Detection Confusion Matrix 
-    n_det = len(det_classes)
-    fig, ax = plt.subplots(figsize=(n_det * 1.4 + 2, n_det * 1.4 + 1.5))  # <-- this was missing
+    cm_det = confusion_matrix(
+        all_det_t,
+        all_det_p,
+        labels=np.arange(len(det_classes)),
+        normalize="true"
+    )
 
-    cm_det = confusion_matrix(all_det_t, all_det_p, normalize='true')
+    fig, ax = plt.subplots(figsize=(22,18))
+
     sns.heatmap(
         cm_det,
         annot=True,
-        fmt='.2f',
-        cmap='Blues',
+        fmt=".2f",
+        cmap="rocket",        
+        vmin=0,
+        vmax=1,
         linewidths=0.3,
-        linecolor='#1a1a1a',
+        linecolor="#1a1a1a",
         xticklabels=det_classes,
         yticklabels=det_classes,
-        ax=ax,
-        annot_kws={"size": 9},
-        cbar_kws={"shrink": 0.8},
+        annot_kws={"size":8},
+        cbar_kws={"shrink":0.8},
+        ax=ax
     )
-    ax.set_title("Detection Confusion Matrix", fontsize=14, pad=14)
 
-    ax.set_xlabel("Predicted", fontsize=12, labelpad=10)
-    ax.set_ylabel("True", fontsize=12, labelpad=10)
-    ax.tick_params(axis='x', labelsize=9, rotation=45)
-    ax.tick_params(axis='y', labelsize=9, rotation=0)
+    ax.set_title("Detection Confusion Matrix", fontsize=18)
+    ax.set_xlabel("Predicted", fontsize=14)
+    ax.set_ylabel("True", fontsize=14)
+
+    ax.tick_params(axis="x", rotation=0, labelsize=10)
+    ax.tick_params(axis="y", rotation=0, labelsize=10)
+
     plt.tight_layout()
-    plt.savefig(save_dir / "detection_cm.png", dpi=150, bbox_inches='tight')
+    plt.savefig(
+        save_dir / "detection_cm.png",
+        dpi=300,
+        bbox_inches="tight"
+    )
     plt.close()
 
-    n_mat = len(mat_classes)
-    fig, ax = plt.subplots(figsize=(n_mat * 1.6 + 2, n_mat * 1.6 + 1.5))
+    # n_det = len(det_classes)
+    # fig, ax = plt.subplots(figsize=(n_det * 1.4 + 2, n_det * 1.4 + 1.5))  # <-- this was missing
 
-    cm_mat = confusion_matrix(all_mat_t, all_mat_p, normalize='true')
+    # cm_det = confusion_matrix(all_det_t, all_det_p, normalize='true')
+    # sns.heatmap(
+    #     cm_det,
+    #     annot=True,
+    #     fmt='.2f',
+    #     cmap='Blues',
+    #     linewidths=0.3,
+    #     linecolor='#1a1a1a',
+    #     xticklabels=det_classes,
+    #     yticklabels=det_classes,
+    #     ax=ax,
+    #     annot_kws={"size": 9},
+    #     cbar_kws={"shrink": 0.8},
+    # )
+    # ax.set_title("Detection Confusion Matrix", fontsize=14, pad=14)
+
+    # ax.set_xlabel("Predicted", fontsize=12, labelpad=10)
+    # ax.set_ylabel("True", fontsize=12, labelpad=10)
+    # ax.tick_params(axis='x', labelsize=9, rotation=45)
+    # ax.tick_params(axis='y', labelsize=9, rotation=0)
+    # plt.tight_layout()
+    # plt.savefig(save_dir / "detection_cm.png", dpi=150, bbox_inches='tight')
+    # plt.close()
+
+
+    # Material Classification Confusion Matrix
+    cm_mat = confusion_matrix(
+        all_mat_t,
+        all_mat_p,
+        labels=np.arange(len(mat_classes)),
+        normalize="true"
+    )
+
+    fig, ax = plt.subplots(figsize=(10,8))
+
     sns.heatmap(
         cm_mat,
         annot=True,
-        fmt='.2f',
-        cmap='Blues',
-        linewidths=0.4,
-        linecolor='#1a1a1a',
+        fmt=".2f",
+        cmap="rocket",
+        vmin=0,
+        vmax=1,
+        linewidths=0.3,
+        linecolor="#1a1a1a",
         xticklabels=mat_classes,
         yticklabels=mat_classes,
-        ax=ax,
-        annot_kws={"size": 13},
-        cbar_kws={"shrink": 0.8},
+        annot_kws={"size":12},
+        cbar_kws={"shrink":0.8},
+        ax=ax
     )
-    ax.set_title("Material Confusion Matrix", fontsize=15, pad=14)
-    ax.set_xlabel("Predicted", fontsize=13, labelpad=10)
-    ax.set_ylabel("True", fontsize=13, labelpad=10)
-    ax.tick_params(axis='x', labelsize=12, rotation=45)
-    ax.tick_params(axis='y', labelsize=12, rotation=0)
+
+    ax.set_title("Material Confusion Matrix", fontsize=18)
+    ax.set_xlabel("Predicted", fontsize=14)
+    ax.set_ylabel("True", fontsize=14)
+
+    ax.tick_params(axis="x", rotation=0, labelsize=12)
+    ax.tick_params(axis="y", rotation=0, labelsize=12)
+
     plt.tight_layout()
-    plt.savefig(save_dir / "material_cm.png", dpi=150, bbox_inches='tight')
+    plt.savefig(
+        save_dir / "material_cm.png",
+        dpi=300,
+        bbox_inches="tight"
+    )
     plt.close()
+
+    # n_mat = len(mat_classes)
+    # fig, ax = plt.subplots(figsize=(n_mat * 1.6 + 2, n_mat * 1.6 + 1.5))
+
+    # cm_mat = confusion_matrix(all_mat_t, all_mat_p, normalize='true')
+    # sns.heatmap(
+    #     cm_mat,
+    #     annot=True,
+    #     fmt='.2f',
+    #     cmap='Blues',
+    #     linewidths=0.4,
+    #     linecolor='#1a1a1a',
+    #     xticklabels=mat_classes,
+    #     yticklabels=mat_classes,
+    #     ax=ax,
+    #     annot_kws={"size": 13},
+    #     cbar_kws={"shrink": 0.8},
+    # )
+    # ax.set_title("Material Confusion Matrix", fontsize=15, pad=14)
+    # ax.set_xlabel("Predicted", fontsize=13, labelpad=10)
+    # ax.set_ylabel("True", fontsize=13, labelpad=10)
+    # ax.tick_params(axis='x', labelsize=12, rotation=0)
+    # ax.tick_params(axis='y', labelsize=12, rotation=0)
+    # plt.tight_layout()
+    # plt.savefig(save_dir / "material_cm.png", dpi=150, bbox_inches='tight')
+    # plt.close()
 
     fig, ax = plt.subplots(figsize=(8, 7))
     ax.scatter(all_dist_t, all_dist_p, alpha=0.4, color='teal', s=18)
@@ -382,6 +464,36 @@ def run_evaluation(model, loader, device, save_dir, history=None):
         )
 
         plt.close()
+
+def epoch_metrics(model, loader, device):
+    model.eval()
+
+    det_preds, det_targets = [], []
+    mat_preds, mat_targets = [], []
+    dist_preds, dist_targets = [], []
+
+    with torch.no_grad():
+        for ir, spec, t_det, t_dist, t_mat in loader:
+            ir = ir.to(device)
+            spec = spec.to(device)
+
+            p_det, p_dist, p_mat = model(ir, spec)
+
+            det_preds.extend(torch.argmax(p_det, dim=1).cpu().numpy())
+            det_targets.extend(t_det.numpy())
+
+            mat_preds.extend(torch.argmax(p_mat, dim=1).cpu().numpy())
+            mat_targets.extend(t_mat.numpy())
+
+            dist_preds.extend(p_dist.squeeze(-1).cpu().numpy())
+            dist_targets.extend(t_dist.numpy())
+
+    det_acc = np.mean(np.array(det_preds) == np.array(det_targets)) * 100
+    mat_acc = np.mean(np.array(mat_preds) == np.array(mat_targets)) * 100
+    rmse = np.sqrt(mean_squared_error(dist_targets, dist_preds))
+    mae = mean_absolute_error(dist_targets, dist_preds)
+
+    return det_acc, mat_acc, rmse, mae
 
 
 def get_next_run_folder(base_path):

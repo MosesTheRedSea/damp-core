@@ -122,6 +122,7 @@ def get_object_groups(folders):
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description="Disentangled Acoustic Multi-task Perception (DAMP)")
+
     parser.add_argument('--pr', type=str, default="", help="Processed data directory")
     parser.add_argument('--ar', type=str, default="", help="Augmented data directory")
     parser.add_argument('--lr', type=float, default=1e-4, help='Learning rate')
@@ -130,6 +131,19 @@ if __name__ == '__main__':
     parser.add_argument('--weight_decay', type=int, default=None, help="Wegiht Decay")
     parser.add_argument("--augment", action="store_true", help="Use augmented training data")
     parser.add_argument("--regen", action="store_true", help="Regenerate augmentations")
+
+
+    # Unique Training  
+    # Object Detection, Distance Regression, Material Classification
+    # parser.add_argument("--task det", type=str)
+    # parser.add_argument("--task dist", type=str)
+    # parser.add_argument("--task mat", type=str)
+    # parser.add_argument("--no-cross-attn", type=str)
+    # parser.add_argument("--no-orth", type=str)
+    # parser.add_argument("--temporal_only", type=str)
+    # parser.add_argument("--no-se", type=str)
+
+
     
     args = parser.parse_args()
 
@@ -179,7 +193,8 @@ if __name__ == '__main__':
     # 25 Individual Objects
     OBJ_CLASSES = [
         "no_object",
-        "cardboard_box",
+        "cardboard_box_large",
+        "cardboard_box_small",
         "speaker",
         "pot",
         "strainer",
@@ -200,7 +215,6 @@ if __name__ == '__main__':
         "teapot",
         "glass_vodka", 
         "glass_shooter",
-        "cardboard_box_small",
         "hardcover_textbook",
         "printer_paper"
     ]
@@ -219,8 +233,10 @@ if __name__ == '__main__':
     mat_map = {name: i for i, name in enumerate(MAT_CLASSES)}
 
     run_extraction(
-        AUDIO_DATA_ROOT, EXCITATION_PATH, PROCESSED_ROOT,
-        skip_if_exists=True,  # won't redo work if already processed
+        AUDIO_DATA_ROOT, 
+        EXCITATION_PATH, 
+        PROCESSED_ROOT,
+        skip_if_exists=not FORCE_REGEN  # won't redo work if already processed
     )
 
     original_folders = sorted([
@@ -308,6 +324,8 @@ if __name__ == '__main__':
             train_full.append(folder)
 
             # Add every augmented version
+            
+            
             for aug in AUGMENTATIONS:
                 aug_folder = AUGMENTED_ROOT / f"{aug}_{folder.name}"
 
@@ -439,6 +457,7 @@ if __name__ == '__main__':
             optimizer.zero_grad()
 
             p_det, p_dist, p_mat = model(ir, spec)
+            
             loss, (l_det, l_dist, l_mat) = criterion(
                 p_det, t_det,
                 p_dist, t_dist,

@@ -75,12 +75,19 @@ class DampNet(nn.Module):
         semantic  = self.semantic_proj(s_embed)  
         geometric = self.geometric_proj(t_embed) 
 
+        semantic_norm = torch.nn.functional.normalize(semantic, dim=1)
+        geometric_norm = torch.nn.functional.normalize(geometric, dim=1)
+
+        self.orthogonality_loss = (
+            semantic_norm * geometric_norm
+        ).sum(dim=1).abs().mean()
+
         fused    = self.detection_fuse(torch.cat([semantic, geometric], dim=1))
         det_out  = self.detection_head(fused)
 
         mat_out  = self.material_head(semantic)
         dist_out = self.distance_head(geometric)
 
-        return det_out, dist_out, mat_out, semantic, geometric
+        return det_out, dist_out, mat_out
 
  
