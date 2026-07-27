@@ -29,7 +29,8 @@ dependencies = [
     "scikit-learn",
     "seaborn",
     "sounddevice",
-    "soundfile"
+    "soundfile",
+    "pyroomacoustics"
 ]
 
 [project.optional-dependencies]

@@ -7,9 +7,11 @@
 #$ -e logs/train_$JOB_ID.err
 
 module purge
+
 module load cuda/12.1
 
 source /home/3/um07293/research/occul-net/.venv/bin/activate
+
 cd /home/3/um07293/research/occul-net
 
-python train.py
+python train.py --augment
