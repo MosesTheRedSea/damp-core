@@ -125,22 +125,20 @@ if __name__ == "__main__":
 
     )
 
-
 """
 python record.py \
-    --dataset-directory "/home/moses/Moses/Research/Current/Institute of Science Tokyo/IST-AUDN25/audio" \
+    --dataset-directory "/home/moses/Moses/Research/Universities/Institute of Science Tokyo/IST-AUDN25/audio" \
     --room-directory room_A \
-    --excitation-path "/home/moses/Moses/Research/Current/Institute of Science Tokyo/acoustic-robotics/Multi-Task Acoustic Perception for Occluded Object Detection, Distance Estimation, and Material Classification/excitation.wav" \
+    --excitation-path "/home/moses/Moses/Research/Universities/Institute of Science Tokyo/acoustic-robotics/Multi-Task Acoustic Perception for Occluded Object Detection, Distance Estimation, and Material Classification/excitation.wav" \
     --occlusion-type wood \
-    --occlusion-distance 0.5 \
-    --occluded-type glass_shooter \
+    --occlusion-distance 0.1 \
+    --occluded-type cardboard_box_small \
     --occluded-distance 0.0 \
-    --base-filename glass_shooter \
+    --base-filename cardboard_box_small \
     --channels 16 \
     --repeat 20 \
     --sleep-duration 3
 """
-
 
 """
 python record.py \

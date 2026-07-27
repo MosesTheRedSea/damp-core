@@ -24,6 +24,7 @@ NUM_CHANNELS = 16
 NPERSEG = 256
 NOVERLAP = 128
 
+# Augmentation Methods Data Manipulation
 def random_polarity_flip(ir):
     return ir * (-1.0 if np.random.rand() > 0.5 else 1.0)
 

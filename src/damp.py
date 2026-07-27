@@ -6,9 +6,11 @@ from src.cross_attention import CrossBranchAttention
 
 class DampNet(nn.Module):
 
-    def __init__(self, num_det_classes, num_mat_classes):
+    def __init__(self, num_det_classes, num_mat_classes, task='all'):
 
         super().__init__()
+
+        self.task = task
 
         self.temporal_branch = Temporal()
 

@@ -319,7 +319,7 @@ def run_evaluation(model, loader, device, save_dir, history=None):
         )
 
         plt.close()
-        
+
         fig, axs = plt.subplots(
             2,
             2,

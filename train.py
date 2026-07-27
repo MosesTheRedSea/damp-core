@@ -207,12 +207,14 @@ if __name__ == '__main__':
 
     # 6 Material Classes
     MAT_CLASSES = [
+
         "none",
         "paper_cardboard",
         "plastic",
         "metal",
         "ceramic",
         "glass"
+        
     ]
 
     det_map = {name: i for i, name in enumerate(OBJ_CLASSES)}
