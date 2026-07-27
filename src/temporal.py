@@ -3,12 +3,14 @@ from torch import nn
 
 class Temporal(nn.Module):
 
-    def __init__(self, input_channels=16, output_features=128):
+    def __init__(self, input_channels=16, output_features=128, use_se=True):
         
          # Tensor shape into model 
         # (128, 16 channels, 1100 samples) — one sample per microphone, cropped around the echo window
 
         super(Temporal, self).__init__()
+
+        self.use_se = use_se
 
         # Multi-Scale Convolutions
         self.conv3 = nn.Sequential(
@@ -46,15 +48,16 @@ class Temporal(nn.Module):
 
         # (Batch, 128 channels, 1100 samples)
         # helps us know which channels are most important
-        self.se = nn.Sequential(
-            nn.AdaptiveAvgPool1d(1),  
-            #  128 dim summary passes through two bottleneck layers
-            nn.Conv1d(128, 8, 1),
-            nn.ReLU(),
-            nn.Conv1d(8, 128, 1),
-            # scaling weight for each of your 128 channels
-            nn.Sigmoid() # between 0.0 & 1.0
-        )   
+        if self.use_se:
+            self.se = nn.Sequential(
+                nn.AdaptiveAvgPool1d(1),  
+                #  128 dim summary passes through two bottleneck layers
+                nn.Conv1d(128, 8, 1),
+                nn.ReLU(),
+                nn.Conv1d(8, 128, 1),
+                # scaling weight for each of your 128 channels
+                nn.Sigmoid() # between 0.0 & 1.0
+            )   
 
         # (Batch, 128 channels, 1) - global summary of the acoustic energy in each channel
     
@@ -77,10 +80,10 @@ class Temporal(nn.Module):
         # concats the output of the resnet1d + proj
         total_feat = torch.relu(out + residual)       
 
-        # Squeeze-and-Excitation
-        se = self.se(total_feat)             
-
-        # original features * calculated 0 <-> 1 weights
-        total_feat = total_feat * se                           
+        if self.use_se:
+            # Squeeze-and-Excitation
+            se = self.se(total_feat)             
+            # original features * calculated 0 <-> 1 weights
+            total_feat = total_feat * se                           
  
         return total_feat

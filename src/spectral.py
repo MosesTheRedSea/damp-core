@@ -9,10 +9,11 @@ class Spectral(nn.Module):
 
     # 2D Convolutions convert 1D audio into images AI recognition
 
-    def __init__(self, input_channels=16, output_features=128):
+    def __init__(self, input_channels=16, output_features=128, use_se=True):
         
         # (batch_size, 16, H, W)
         super(Spectral, self).__init__()
+        self.use_se = use_se
         
         # Conv2d 
         self.skip = nn.Conv2d(96, 128, kernel_size=1)
@@ -44,15 +45,16 @@ class Spectral(nn.Module):
             nn.Conv2d(96,128,3,padding=1),
             nn.BatchNorm2d(128),
             nn.ReLU()
-        )
+        )   
 
-        self.se = nn.Sequential(
-            nn.AdaptiveAvgPool2d(1),
-            nn.Conv2d(128,8, kernel_size=1),
-            nn.ReLU(),
-            nn.Conv2d(8,128, kernel_size=1),
-            nn.Sigmoid()
-        )
+        if self.use_se:
+            self.se = nn.Sequential(
+                nn.AdaptiveAvgPool2d(1),
+                nn.Conv2d(128,8, kernel_size=1),
+                nn.ReLU(),
+                nn.Conv2d(8,128, kernel_size=1),
+                nn.Sigmoid()
+            )
 
     def forward(self, input):
 
@@ -70,6 +72,8 @@ class Spectral(nn.Module):
         output = self.conv_block(total_feat)
         output = output + residual
         output = torch.relu(output)
-        output = output * self.se(output)
+
+        if self.use_se:
+            output = output * self.se(output)
 
         return output 

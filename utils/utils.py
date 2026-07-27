@@ -46,7 +46,7 @@ def convert_pth_to_pt():
     weights = torch.load('damp.pth', map_location='cpu')
     torch.save(weights, 'damp.pt')
 
-def run_evaluation(model, loader, device, save_dir, history=None):
+def run_evaluation(model, loader, device, save_dir, history=None, task="all"):
 
     model.eval()
 
@@ -82,7 +82,6 @@ def run_evaluation(model, loader, device, save_dir, history=None):
         "printer_paper"
     ]
 
-    # 6 Material Classes
     MAT_CLASSES = [
         "none",
         "paper_cardboard",
@@ -99,179 +98,109 @@ def run_evaluation(model, loader, device, save_dir, history=None):
         for ir, spec, t_det, t_dist, t_mat in loader:
             ir, spec = ir.to(device), spec.to(device)
             p_det, p_dist, p_mat = model(ir, spec)
-            all_det_p.extend(torch.argmax(p_det, dim=1).cpu().numpy())
-            all_det_t.extend(t_det.numpy())
-            all_mat_p.extend(torch.argmax(p_mat, dim=1).cpu().numpy())
-            all_mat_t.extend(t_mat.numpy())
-            all_dist_p.extend(p_dist.squeeze(-1).cpu().numpy())
-            all_dist_t.extend(t_dist.numpy())
+            
+            if p_det is not None:
+                all_det_p.extend(torch.argmax(p_det, dim=1).cpu().numpy())
+                all_det_t.extend(t_det.numpy())
+            if p_mat is not None:
+                all_mat_p.extend(torch.argmax(p_mat, dim=1).cpu().numpy())
+                all_mat_t.extend(t_mat.numpy())
+            if p_dist is not None:
+                all_dist_p.extend(p_dist.squeeze(-1).cpu().numpy())
+                all_dist_t.extend(t_dist.numpy())
 
-    acc_det   = np.mean(np.array(all_det_p) == np.array(all_det_t)) * 100
-    rmse_dist = np.sqrt(mean_squared_error(all_dist_t, all_dist_p))
-    mae_dist  = mean_absolute_error(all_dist_t, all_dist_p)
+    has_det = len(all_det_p) > 0
+    has_mat = len(all_mat_p) > 0
+    has_dist = len(all_dist_p) > 0
 
-    print(f"\nDetection Accuracy : {acc_det:.2f}%")
-    print(f"Distance RMSE      : {rmse_dist:.2f} m")
-    print(f"Distance MAE       : {mae_dist:.2f} m")
+    acc_det = np.mean(np.array(all_det_p) == np.array(all_det_t)) * 100 if has_det else 0.0
+    acc_mat = np.mean(np.array(all_mat_p) == np.array(all_mat_t)) * 100 if has_mat else 0.0
+    rmse_dist = np.sqrt(mean_squared_error(all_dist_t, all_dist_p)) if has_dist else 0.0
+    mae_dist = mean_absolute_error(all_dist_t, all_dist_p) if has_dist else 0.0
 
-    print(classification_report(all_det_t, all_det_p, target_names=det_classes))
-    print(classification_report(all_mat_t, all_mat_p, target_names=mat_classes))
+    if has_det:
+        print(f"\nDetection Accuracy : {acc_det:.2f}%")
+        print(classification_report(all_det_t, all_det_p, target_names=det_classes))
+    if has_mat:
+        print(f"Material Accuracy : {acc_mat:.2f}%")
+        print(classification_report(all_mat_t, all_mat_p, target_names=mat_classes))
+    if has_dist:
+        print(f"Distance RMSE : {rmse_dist:.2f} m")
+        print(f"Distance MAE : {mae_dist:.2f} m")
 
     # Object Detection Confusion Matrix 
-    cm_det = confusion_matrix(
-        all_det_t,
-        all_det_p,
-        labels=np.arange(len(det_classes)),
-        normalize="true"
-    )
-
-    fig, ax = plt.subplots(figsize=(22,18))
-
-    sns.heatmap(
-        cm_det,
-        annot=True,
-        fmt=".2f",
-        cmap="rocket",        
-        vmin=0,
-        vmax=1,
-        linewidths=0.3,
-        linecolor="#1a1a1a",
-        xticklabels=det_classes,
-        yticklabels=det_classes,
-        annot_kws={"size":8},
-        cbar_kws={"shrink":0.8},
-        ax=ax
-    )
-
-    ax.set_title("Detection Confusion Matrix", fontsize=18)
-    ax.set_xlabel("Predicted", fontsize=14)
-    ax.set_ylabel("True", fontsize=14)
-
-    ax.tick_params(axis="x", rotation=0, labelsize=10)
-    ax.tick_params(axis="y", rotation=0, labelsize=10)
-
-    plt.tight_layout()
-    plt.savefig(
-        save_dir / "detection_cm.png",
-        dpi=300,
-        bbox_inches="tight"
-    )
-    plt.close()
-
-    # n_det = len(det_classes)
-    # fig, ax = plt.subplots(figsize=(n_det * 1.4 + 2, n_det * 1.4 + 1.5))  # <-- this was missing
-
-    # cm_det = confusion_matrix(all_det_t, all_det_p, normalize='true')
-    # sns.heatmap(
-    #     cm_det,
-    #     annot=True,
-    #     fmt='.2f',
-    #     cmap='Blues',
-    #     linewidths=0.3,
-    #     linecolor='#1a1a1a',
-    #     xticklabels=det_classes,
-    #     yticklabels=det_classes,
-    #     ax=ax,
-    #     annot_kws={"size": 9},
-    #     cbar_kws={"shrink": 0.8},
-    # )
-    # ax.set_title("Detection Confusion Matrix", fontsize=14, pad=14)
-
-    # ax.set_xlabel("Predicted", fontsize=12, labelpad=10)
-    # ax.set_ylabel("True", fontsize=12, labelpad=10)
-    # ax.tick_params(axis='x', labelsize=9, rotation=45)
-    # ax.tick_params(axis='y', labelsize=9, rotation=0)
-    # plt.tight_layout()
-    # plt.savefig(save_dir / "detection_cm.png", dpi=150, bbox_inches='tight')
-    # plt.close()
-
+    if has_det:
+        cm_det = confusion_matrix(
+            all_det_t,
+            all_det_p,
+            labels=np.arange(len(det_classes)),
+            normalize="true"
+        )
+        fig, ax = plt.subplots(figsize=(22,18))
+        sns.heatmap(
+            cm_det, annot=True, fmt=".2f", cmap="rocket", vmin=0, vmax=1,
+            linewidths=0.3, linecolor="#1a1a1a",
+            xticklabels=det_classes, yticklabels=det_classes,
+            annot_kws={"size":8}, cbar_kws={"shrink":0.8}, ax=ax
+        )
+        ax.set_title("Detection Confusion Matrix", fontsize=18)
+        ax.set_xlabel("Predicted", fontsize=14)
+        ax.set_ylabel("True", fontsize=14)
+        ax.tick_params(axis="x", rotation=0, labelsize=10)
+        ax.tick_params(axis="y", rotation=0, labelsize=10)
+        plt.tight_layout()
+        plt.savefig(save_dir / "detection_cm.png", dpi=300, bbox_inches="tight")
+        plt.close()
 
     # Material Classification Confusion Matrix
-    cm_mat = confusion_matrix(
-        all_mat_t,
-        all_mat_p,
-        labels=np.arange(len(mat_classes)),
-        normalize="true"
-    )
+    if has_mat:
+        cm_mat = confusion_matrix(
+            all_mat_t,
+            all_mat_p,
+            labels=np.arange(len(mat_classes)),
+            normalize="true"
+        )
+        fig, ax = plt.subplots(figsize=(10,8))
+        sns.heatmap(
+            cm_mat, annot=True, fmt=".2f", cmap="rocket", vmin=0, vmax=1,
+            linewidths=0.3, linecolor="#1a1a1a",
+            xticklabels=mat_classes, yticklabels=mat_classes,
+            annot_kws={"size":12}, cbar_kws={"shrink":0.8}, ax=ax
+        )
+        ax.set_title("Material Confusion Matrix", fontsize=18)
+        ax.set_xlabel("Predicted", fontsize=14)
+        ax.set_ylabel("True", fontsize=14)
+        ax.tick_params(axis="x", rotation=0, labelsize=12)
+        ax.tick_params(axis="y", rotation=0, labelsize=12)
+        plt.tight_layout()
+        plt.savefig(save_dir / "material_cm.png", dpi=300, bbox_inches="tight")
+        plt.close()
 
-    fig, ax = plt.subplots(figsize=(10,8))
-
-    sns.heatmap(
-        cm_mat,
-        annot=True,
-        fmt=".2f",
-        cmap="rocket",
-        vmin=0,
-        vmax=1,
-        linewidths=0.3,
-        linecolor="#1a1a1a",
-        xticklabels=mat_classes,
-        yticklabels=mat_classes,
-        annot_kws={"size":12},
-        cbar_kws={"shrink":0.8},
-        ax=ax
-    )
-
-    ax.set_title("Material Confusion Matrix", fontsize=18)
-    ax.set_xlabel("Predicted", fontsize=14)
-    ax.set_ylabel("True", fontsize=14)
-
-    ax.tick_params(axis="x", rotation=0, labelsize=12)
-    ax.tick_params(axis="y", rotation=0, labelsize=12)
-
-    plt.tight_layout()
-    plt.savefig(
-        save_dir / "material_cm.png",
-        dpi=300,
-        bbox_inches="tight"
-    )
-    plt.close()
-
-    # n_mat = len(mat_classes)
-    # fig, ax = plt.subplots(figsize=(n_mat * 1.6 + 2, n_mat * 1.6 + 1.5))
-
-    # cm_mat = confusion_matrix(all_mat_t, all_mat_p, normalize='true')
-    # sns.heatmap(
-    #     cm_mat,
-    #     annot=True,
-    #     fmt='.2f',
-    #     cmap='Blues',
-    #     linewidths=0.4,
-    #     linecolor='#1a1a1a',
-    #     xticklabels=mat_classes,
-    #     yticklabels=mat_classes,
-    #     ax=ax,
-    #     annot_kws={"size": 13},
-    #     cbar_kws={"shrink": 0.8},
-    # )
-    # ax.set_title("Material Confusion Matrix", fontsize=15, pad=14)
-    # ax.set_xlabel("Predicted", fontsize=13, labelpad=10)
-    # ax.set_ylabel("True", fontsize=13, labelpad=10)
-    # ax.tick_params(axis='x', labelsize=12, rotation=0)
-    # ax.tick_params(axis='y', labelsize=12, rotation=0)
-    # plt.tight_layout()
-    # plt.savefig(save_dir / "material_cm.png", dpi=150, bbox_inches='tight')
-    # plt.close()
-
-    fig, ax = plt.subplots(figsize=(8, 7))
-    ax.scatter(all_dist_t, all_dist_p, alpha=0.4, color='teal', s=18)
-    lim = [min(all_dist_t) - 0.02, max(all_dist_t) + 0.02]
-    ax.plot(lim, lim, 'r--', linewidth=1.5, label='Perfect prediction')
-    ax.set_xlim(lim)
-    ax.set_ylim(lim)
-    ax.set_xlabel("True distance (m)", fontsize=12)
-    ax.set_ylabel("Predicted distance (m)", fontsize=12)
-    ax.set_title(f"Distance  RMSE={rmse_dist:.3f}m  MAE={mae_dist:.3f}m", fontsize=13)
-    ax.legend(fontsize=11)
-    ax.grid(True, alpha=0.3)
-    plt.tight_layout()
-    plt.savefig(save_dir / "distance_scatter.png", dpi=150, bbox_inches='tight')
-    plt.close()
+    # Distance Scatter Plot
+    if has_dist:
+        fig, ax = plt.subplots(figsize=(8, 7))
+        ax.scatter(all_dist_t, all_dist_p, alpha=0.4, color='teal', s=18)
+        lim = [min(all_dist_t) - 0.02, max(all_dist_t) + 0.02]
+        ax.plot(lim, lim, 'r--', linewidth=1.5, label='Perfect prediction')
+        ax.set_xlim(lim)
+        ax.set_ylim(lim)
+        ax.set_xlabel("True distance (m)", fontsize=12)
+        ax.set_ylabel("Predicted distance (m)", fontsize=12)
+        ax.set_title(f"Distance  RMSE={rmse_dist:.3f}m  MAE={mae_dist:.3f}m", fontsize=13)
+        ax.legend(fontsize=11)
+        ax.grid(True, alpha=0.3)
+        plt.tight_layout()
+        plt.savefig(save_dir / "distance_scatter.png", dpi=150, bbox_inches='tight')
+        plt.close()
 
     with open(save_dir / "results.txt", "w") as f:
-        f.write(f"Detection Accuracy : {acc_det:.2f}%\n")
-        f.write(f"Distance RMSE      : {rmse_dist:.2f} m\n")
-        f.write(f"Distance MAE       : {mae_dist:.2f} m\n")
+        if has_det:
+            f.write(f"Detection Accuracy : {acc_det:.2f}%\n")
+        if has_mat:
+            f.write(f"Material Accuracy  : {acc_mat:.2f}%\n")
+        if has_dist:
+            f.write(f"Distance RMSE : {rmse_dist:.2f} m\n")
+            f.write(f"Distance MAE  : {mae_dist:.2f} m\n")
 
     if history is not None:
 

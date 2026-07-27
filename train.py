@@ -94,20 +94,19 @@ class MultiTaskLoss(nn.Module):
         losses = {"det":0.0, "dist":0.0, "mat":0.0}
 
         if p_det is not None:
-
-            loss_det = F.cross_entropy( p_det, t_det, label_smoothing=0.1)
-            losses["det"] = (loss_det / math.log(self.num_det_classes))
-            total += self.w_det * losses["det"]
+            loss_det = F.cross_entropy(p_det, t_det, label_smoothing=0.1)
+            losses["det"] = (loss_det / math.log(self.num_det_classes)).item()
+            total += self.w_det * (loss_det / math.log(self.num_det_classes))
 
         if p_mat is not None:
             loss_mat = F.cross_entropy(p_mat, t_mat, label_smoothing=0.1)
-            losses["mat"] = (loss_mat / math.log(self.num_mat_classes))
-            total += self.w_mat * losses["mat"]
+            losses["mat"] = (loss_mat / math.log(self.num_mat_classes)).item()
+            total += self.w_mat * (loss_mat / math.log(self.num_mat_classes))
 
         if p_dist is not None:
             loss_dist = F.l1_loss(p_dist.squeeze(-1), t_dist)
-            losses["dist"] = (loss_dist / self.max_dist)
-            total += self.w_dist * losses["dist"]
+            losses["dist"] = (loss_dist / self.max_dist).item()
+            total += self.w_dist * (loss_dist / self.max_dist)
 
 
         if ortho_loss is not None:
@@ -162,11 +161,11 @@ if __name__ == '__main__':
     # Unique Training  
     # Object Detection, Distance Regression, Material Classification
 
-    parser.add_argument("--task ", choices=["all","det","dist","mat"], default="all")
-    parser.add_argument("--no_cross_attn", type=str)
-    parser.add_argument("--no_orth", type=str)
-    parser.add_argument("--temporal_only", type=str)
-    parser.add_argument("--no_se", action="store_true")
+    parser.add_argument("--task", choices=["all","det","dist","mat"])
+    parser.add_argument("--no_cross_attn", action="store_true", help="Disable cross-attention")
+    parser.add_argument("--no_orth", action="store_true", help="Disable orthogonality loss")
+    parser.add_argument("--temporal_only", action="store_true", help="Use temporal-only branch")
+    parser.add_argument("--use_se", action="store_true", help="Use squeeze-and-excitation")
 
     args = parser.parse_args()
 
@@ -405,16 +404,34 @@ if __name__ == '__main__':
     PATIENCE = 25
     VAL_SMOOTH = 0.9
 
-    model_run_dir  = get_next_run_folder("./models")
-    result_run_dir = get_next_run_folder("./results")
+    variant_name = f"task_{args.task}"
+
+    if args.temporal_only:
+        variant_name += "_temporal_only"
+
+    if args.no_cross_attn:
+        variant_name += "_no_cross_attn"
+
+    if args.no_orth:
+        variant_name += "_no_orth"
+
+    if not args.use_se:
+        variant_name += "_no_use_se"
+
+    if FORCE_AUGMENT:
+        variant_name += "_augmented"
+
+    model_run_dir = Path("./models") / variant_name
+    result_run_dir = Path("./results") / variant_name
+
+    model_run_dir.mkdir(parents=True, exist_ok=True)
+    result_run_dir.mkdir(parents=True, exist_ok=True)
 
     print(f"Saving model to:   {model_run_dir}")
     print(f"Saving results to: {result_run_dir}")
 
-    model = DAMP(len(OBJ_CLASSES), len(MAT_CLASSES), task=args.task, 
-                     use_cross_attn=not args.no_cross_attn, use_ortho_loss=not args.no_orth, temporal_only=args.temporal_only
-
-).to(DEVICE)
+    model = DAMP(len(OBJ_CLASSES), len(MAT_CLASSES), task=args.task, use_cross_attn=not args.no_cross_attn, 
+        use_ortho_loss=not args.no_orth,  temporal_only=args.temporal_only, use_se=args.use_se).to(DEVICE)
 
     # fine tuning model 
     criterion = MultiTaskLoss(
@@ -506,9 +523,6 @@ if __name__ == '__main__':
                 )
 
                 optimizer.step()
-
-            nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
-            optimizer.step()
 
             train_losses.append(loss.item())
             train_det.append(l_det)
