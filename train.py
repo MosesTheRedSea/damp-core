@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
 from pathlib import Path
-from src.damp import DampNet
+from src.damp import DAMP
 from collections import Counter
 from utils.utils import get_next_run_folder
 from utils.utils import epoch_metrics
@@ -90,26 +90,53 @@ class MultiTaskLoss(nn.Module):
 
     def forward(self, p_det, t_det, p_dist, t_dist, p_mat, t_mat, ortho_loss=None):
 
-        loss_det = F.cross_entropy(p_det, t_det, label_smoothing=0.1)
-        loss_mat = F.cross_entropy(p_mat, t_mat, label_smoothing=0.1)
+        total = 0.0
+        losses = {"det":0.0, "dist":0.0, "mat":0.0}
 
-        loss_dist = F.l1_loss(p_dist.squeeze(-1), t_dist)
+        if p_det is not None:
 
-        # Normalise each loss to roughly [0, 1]
-        loss_det_norm  = loss_det  / math.log(self.num_det_classes)
-        loss_mat_norm  = loss_mat  / math.log(self.num_mat_classes)
-        loss_dist_norm = loss_dist / self.max_dist
+            loss_det = F.cross_entropy( p_det, t_det, label_smoothing=0.1)
+            losses["det"] = (loss_det / math.log(self.num_det_classes))
+            total += self.w_det * losses["det"]
 
-        total = (
-            self.w_det  * loss_det_norm  +
-            self.w_mat  * loss_mat_norm  +
-            self.w_dist * loss_dist_norm
-        )
+        if p_mat is not None:
+            loss_mat = F.cross_entropy(p_mat, t_mat, label_smoothing=0.1)
+            losses["mat"] = (loss_mat / math.log(self.num_mat_classes))
+            total += self.w_mat * losses["mat"]
+
+        if p_dist is not None:
+            loss_dist = F.l1_loss(p_dist.squeeze(-1), t_dist)
+            losses["dist"] = (loss_dist / self.max_dist)
+            total += self.w_dist * losses["dist"]
+
 
         if ortho_loss is not None:
-            total = total + self.ortho_lambda * torch.clamp(ortho_loss, 0, 10)
+            total += (self.ortho_lambda * torch.clamp(ortho_loss,0,10))
 
-        return total, (loss_det_norm.item(), loss_dist_norm.item(), loss_mat_norm.item())
+        return total, (losses["det"], losses["dist"], losses["mat"])
+
+
+
+        # loss_det = F.cross_entropy(p_det, t_det, label_smoothing=0.1)
+        # loss_mat = F.cross_entropy(p_mat, t_mat, label_smoothing=0.1)
+
+        # loss_dist = F.l1_loss(p_dist.squeeze(-1), t_dist)
+
+        # # Normalise each loss to roughly [0, 1]
+        # loss_det_norm  = loss_det  / math.log(self.num_det_classes)
+        # loss_mat_norm  = loss_mat  / math.log(self.num_mat_classes)
+        # loss_dist_norm = loss_dist / self.max_dist
+
+        # total = (
+        #     self.w_det  * loss_det_norm  +
+        #     self.w_mat  * loss_mat_norm  +
+        #     self.w_dist * loss_dist_norm
+        # )
+
+        # if ortho_loss is not None:
+        #     total = total + self.ortho_lambda * torch.clamp(ortho_loss, 0, 10)
+
+        # return total, (loss_det_norm.item(), loss_dist_norm.item(), loss_mat_norm.item())
 
 def get_object_groups(folders):
     groups = defaultdict(list)
@@ -132,19 +159,15 @@ if __name__ == '__main__':
     parser.add_argument("--augment", action="store_true", help="Use augmented training data")
     parser.add_argument("--regen", action="store_true", help="Regenerate augmentations")
 
-
     # Unique Training  
     # Object Detection, Distance Regression, Material Classification
-    # parser.add_argument("--task det", type=str)
-    # parser.add_argument("--task dist", type=str)
-    # parser.add_argument("--task mat", type=str)
-    # parser.add_argument("--no-cross-attn", type=str)
-    # parser.add_argument("--no-orth", type=str)
-    # parser.add_argument("--temporal_only", type=str)
-    # parser.add_argument("--no-se", type=str)
 
+    parser.add_argument("--task ", choices=["all","det","dist","mat"], default="all")
+    parser.add_argument("--no_cross_attn", type=str)
+    parser.add_argument("--no_orth", type=str)
+    parser.add_argument("--temporal_only", type=str)
+    parser.add_argument("--no_se", action="store_true")
 
-    
     args = parser.parse_args()
 
     AUDIO_DATA_ROOT = "/home/3/um07293/data/audio"
@@ -388,14 +411,21 @@ if __name__ == '__main__':
     print(f"Saving model to:   {model_run_dir}")
     print(f"Saving results to: {result_run_dir}")
 
-    model = DampNet(len(OBJ_CLASSES), len(MAT_CLASSES)).to(DEVICE)
+    model = DAMP(len(OBJ_CLASSES), len(MAT_CLASSES), task=args.task, 
+                     use_cross_attn=not args.no_cross_attn, use_ortho_loss=not args.no_orth, temporal_only=args.temporal_only
+
+).to(DEVICE)
 
     # fine tuning model 
     criterion = MultiTaskLoss(
         w_det=1.0,
         w_dist=5.0,
         w_mat=1.0,
-        ortho_lambda=0.01,
+
+        ortho_lambda=(
+            0.0 if args.no_orth else 0.01
+        ),
+
         num_det_classes=len(OBJ_CLASSES),
         num_mat_classes=len(MAT_CLASSES),
         max_dist=MAX_DIST
@@ -467,7 +497,16 @@ if __name__ == '__main__':
                 ortho_loss=model.orthogonality_loss
             )
 
-            loss.backward()
+            if loss.requires_grad:
+                loss.backward()
+
+                nn.utils.clip_grad_norm_(
+                    model.parameters(),
+                    max_norm=1.0
+                )
+
+                optimizer.step()
+
             nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
             optimizer.step()
 
@@ -509,7 +548,12 @@ if __name__ == '__main__':
         avg_val_dist = np.mean(val_dist)
         avg_val_mat = np.mean(val_mat)
 
-        det_acc, mat_acc, rmse, mae = epoch_metrics(model, val_loader, DEVICE)
+        det_acc, mat_acc, rmse, mae = epoch_metrics(
+            model,
+            val_loader,
+            DEVICE,
+            task=args.task
+        )
 
         epoch_time = time.time() - epoch_start
 
@@ -571,4 +615,4 @@ if __name__ == '__main__':
     with open(result_run_dir / "training_history.json", "w") as f:
         json.dump(history, f, indent=4)
 
-    run_evaluation(model, val_loader, DEVICE, result_run_dir, history)
+    run_evaluation(model, val_loader, DEVICE,  result_run_dir, history, task=args.task)

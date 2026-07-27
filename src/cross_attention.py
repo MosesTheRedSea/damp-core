@@ -21,7 +21,6 @@ class CrossBranchAttention(nn.Module):
         )
  
         self.temporal_norm = nn.LayerNorm(dim)
-
         self.spectral_norm = nn.LayerNorm(dim)
 
         self.temporal_ffn = nn.Sequential(

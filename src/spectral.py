@@ -39,14 +39,12 @@ class Spectral(nn.Module):
             nn.ReLU()
         )   
 
-
         self.conv_block = nn.Sequential(
             # (96, 128, 3=kernel_size, padding=1)
             nn.Conv2d(96,128,3,padding=1),
             nn.BatchNorm2d(128),
             nn.ReLU()
         )
-
 
         self.se = nn.Sequential(
             nn.AdaptiveAvgPool2d(1),

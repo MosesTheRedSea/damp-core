@@ -465,7 +465,7 @@ def run_evaluation(model, loader, device, save_dir, history=None):
 
         plt.close()
 
-def epoch_metrics(model, loader, device):
+def epoch_metrics(model, loader, device, task="all"):
     model.eval()
 
     det_preds, det_targets = [], []
@@ -473,25 +473,90 @@ def epoch_metrics(model, loader, device):
     dist_preds, dist_targets = [], []
 
     with torch.no_grad():
+
         for ir, spec, t_det, t_dist, t_mat in loader:
+
             ir = ir.to(device)
             spec = spec.to(device)
 
             p_det, p_dist, p_mat = model(ir, spec)
 
-            det_preds.extend(torch.argmax(p_det, dim=1).cpu().numpy())
-            det_targets.extend(t_det.numpy())
 
-            mat_preds.extend(torch.argmax(p_mat, dim=1).cpu().numpy())
-            mat_targets.extend(t_mat.numpy())
+            # Detection metrics
+            if p_det is not None:
 
-            dist_preds.extend(p_dist.squeeze(-1).cpu().numpy())
-            dist_targets.extend(t_dist.numpy())
+                det_preds.extend(
+                    torch.argmax(p_det, dim=1).cpu().numpy()
+                )
 
-    det_acc = np.mean(np.array(det_preds) == np.array(det_targets)) * 100
-    mat_acc = np.mean(np.array(mat_preds) == np.array(mat_targets)) * 100
-    rmse = np.sqrt(mean_squared_error(dist_targets, dist_preds))
-    mae = mean_absolute_error(dist_targets, dist_preds)
+                det_targets.extend(
+                    t_det.numpy()
+                )
+
+
+            # Material metrics
+            if p_mat is not None:
+
+                mat_preds.extend(
+                    torch.argmax(p_mat, dim=1).cpu().numpy()
+                )
+
+                mat_targets.extend(
+                    t_mat.numpy()
+                )
+
+
+            # Distance metrics
+            if p_dist is not None:
+
+                dist_preds.extend(
+                    p_dist.squeeze(-1).cpu().numpy()
+                )
+
+                dist_targets.extend(
+                    t_dist.numpy()
+                )
+
+
+    # Defaults
+    det_acc = 0.0
+    mat_acc = 0.0
+    rmse = 0.0
+    mae = 0.0
+
+
+    if len(det_preds) > 0:
+
+        det_acc = (
+            np.mean(
+                np.array(det_preds) == np.array(det_targets)
+            ) * 100
+        )
+
+
+    if len(mat_preds) > 0:
+
+        mat_acc = (
+            np.mean(
+                np.array(mat_preds) == np.array(mat_targets)
+            ) * 100
+        )
+
+
+    if len(dist_preds) > 0:
+
+        rmse = np.sqrt(
+            mean_squared_error(
+                dist_targets,
+                dist_preds
+            )
+        )
+
+        mae = mean_absolute_error(
+            dist_targets,
+            dist_preds
+        )
+
 
     return det_acc, mat_acc, rmse, mae
 
