@@ -1,0 +1,48 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "acoustic-object-detection"
+version = "0.1.0"
+description = "occluded acoustic object detection"
+readme = "README.md"
+requires-python = ">=3.11,<3.12"
+license = { text = "MIT" }
+
+authors = [
+    { name = "Moses Adewolu", email = "MosesOluwatobiAdewolu@gmail.com" }
+]
+
+dependencies = [
+    "numpy<2",
+    "scipy",
+    "matplotlib",
+    "h5py",
+    "pillow",
+    "pyyaml",
+    "tqdm",
+    "pandas",
+    "torch",
+    "torchvision",
+    "torchmetrics",
+    "scikit-learn",
+    "seaborn",
+    "sounddevice",
+    "soundfile",
+    "pyroomacoustics"
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "black",
+    "flake8",
+    "ipython"
+]
+
+[tool.setuptools]
+package-dir = { "" = "." }
+
+[tool.setuptools.packages.find]
+where = ["src"]

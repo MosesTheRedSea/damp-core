@@ -1,0 +1,43 @@
+
+data/processed/
+data/augmented/
+data/raw/
+/uv.lock
+
+example.txt
+*.pth
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Build / packaging
+*.egg-info/
+dist/
+build/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# PyTorch / ML model checkpoints
+*.pth
+*.pt
+*.ckpt
+
+# Results / outputs
+results/
+models/
+runs/
+logs/
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# IDEs
+.vscode/
+.idea/
