@@ -25,7 +25,7 @@ The dataset contains **4,560** multi-channel acoustic recordings collected in a 
 | Total Recordings | **4,560** |
 | Object Categories | **25** |
 | Material Categories | **6** |
-| Occlusion Configurations | **3** |
+| Occlusion Configurations | **1** |
 | Recording Environments | **1** |
 
 ### Material Categories
